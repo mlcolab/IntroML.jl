@@ -1,0 +1,13 @@
+name = "IntroML"
+uuid = "f16ed5a4-c5bd-47e9-8f9b-55da3edf7325"
+authors = ["Seth Axen <seth.axen@gmail.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
