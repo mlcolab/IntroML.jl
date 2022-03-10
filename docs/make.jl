@@ -13,12 +13,7 @@ makedocs(;
         canonical="https://mlcolab.github.io/IntroML.jl",
         assets=String[],
     ),
-    pages=[
-        "Home" => "index.md",
-    ],
+    pages=["Home" => "index.md"],
 )
 
-deploydocs(;
-    repo="github.com/mlcolab/IntroML.jl",
-    devbranch="main",
-)
+deploydocs(; repo="github.com/mlcolab/IntroML.jl", devbranch="main")
