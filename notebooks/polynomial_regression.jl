@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -38,16 +45,11 @@ md"""
 # Regression models
 
 Regression has its own terminology we will avoid here.
-We write instead $f(x)$, where $f(x)$ is an unknown function we want to approximate.
+We write instead ``f(x)``, where ``f(x)`` is an unknown function we want to approximate.
 
 # Loss function
 
-We then choose as our loss the L2 norm: $L(x) = -\lVert y - f(x) \rVert^2$
-
-$(HTML(\"""
-<details>
-</details>
-\"""))
+We then choose as our loss the L2 norm: ``L(x) = -\lVert y - f(x) \rVert^2``
 """
 
 # ╔═╡ ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
@@ -225,9 +227,9 @@ x = range(0, 1; length=npoints)
 
 # ╔═╡ 01af74cf-172d-4561-a7d9-6131a22b4161
 y = let
-	# set a seed so the plots are reproducible
-	rng = MersenneTwister(42)
-	@. f(x) + randn(rng) * error_actual
+    # set a seed so the plots are reproducible
+    rng = MersenneTwister(42)
+    @. f(x) + randn(rng) * error_actual
 end
 
 # ╔═╡ 8924cb14-da05-4868-91c4-49906798fc56
@@ -236,20 +238,20 @@ md"""
 """
 
 # ╔═╡ 696ff9c0-9e0d-4aeb-ae2a-72a24b401aed
-function train_test_indices(x, frac_test = 0.5; rng=Random.GLOBAL_RNG)
-	n = length(x)
-	ntest = ceil(Int, frac_test * n)
-	@assert ntest < n
-	inds = shuffle(rng, eachindex(x))
-	itrain = inds[ntest+1:n]
-	itest = inds[1:ntest]
-	return itrain, itest
+function train_test_indices(x, frac_test=0.5; rng=Random.GLOBAL_RNG)
+    n = length(x)
+    ntest = ceil(Int, frac_test * n)
+    @assert ntest < n
+    inds = shuffle(rng, eachindex(x))
+    itrain = inds[(ntest + 1):n]
+    itest = inds[1:ntest]
+    return itrain, itest
 end
 
 # ╔═╡ 4f54f644-c50b-4669-b7c4-e02000c410a3
 itrain, itest = let
-	rng = MersenneTwister(37)
-	train_test_indices(x, split_train_test ? 0.2 : 0; rng)
+    rng = MersenneTwister(37)
+    train_test_indices(x, split_train_test ? 0.2 : 0; rng)
 end
 
 # ╔═╡ a66ad35b-cfd2-4f19-b44e-9b6c76caeff7
@@ -265,23 +267,23 @@ md"""
 
 # ╔═╡ de8fa9b2-52f9-4b5c-b655-bd51b35598ea
 w = let
-	p = 0:max_order
-	terms = xtrain .^ p'
-	terms \ ytrain
+    p = 0:max_order
+    terms = xtrain .^ p'
+    terms \ ytrain
 end
 
 # ╔═╡ 428cff77-f5fb-4965-9ee2-11a51bca299d
 let
-	xlims = (-0.01, 1.01)
-	ymax = maximum(abs, y)
-	ylims = (-ymax * 1.5, ymax * 1.5)
-	plot()
-	xvals = range(0, 1; length=1_000)
-	show_f && plot!(xvals, f; color=:blue, lw=2)
-	show_train && scatter!(xtrain, ytrain; color=:black, ms=3, msw=0)
-	show_test && scatter!(xtest, ytest; color=:red, ms=3, msw=0, m=:diamond)
-	show_fit && plot!(xvals, x -> evalpoly(x, w); color=:magenta, lw=2, ls=:dash)
-	plot!(; xlabel=:x, ylabel=:y, legend=false, xlims, ylims)
+    xlims = (-0.01, 1.01)
+    ymax = maximum(abs, y)
+    ylims = (-ymax * 1.5, ymax * 1.5)
+    plot()
+    xvals = range(0, 1; length=1_000)
+    show_f && plot!(xvals, f; color=:blue, lw=2)
+    show_train && scatter!(xtrain, ytrain; color=:black, ms=3, msw=0)
+    show_test && scatter!(xtest, ytest; color=:red, ms=3, msw=0, m=:diamond)
+    show_fit && plot!(xvals, x -> evalpoly(x, w); color=:magenta, lw=2, ls=:dash)
+    plot!(; xlabel=:x, ylabel=:y, legend=false, xlims, ylims)
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
