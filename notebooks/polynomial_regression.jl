@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.18.2
 
 using Markdown
 using InteractiveUtils
@@ -23,6 +23,9 @@ end
 
 # ╔═╡ ef43aef6-80ec-4976-91e6-84a74d29a83e
 using PlutoUI, Random, Plots
+
+# ╔═╡ a431112f-074f-4909-9b13-02387fc10b15
+using LinearAlgebra
 
 # ╔═╡ 2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
 md"""
@@ -194,6 +197,12 @@ show_train_select = @bind show_train CheckBox(; default=false);
 # ╔═╡ 2cd176b5-d335-4aaf-b2d2-37fab7ce3cbf
 show_test_select = @bind show_test CheckBox(; default=false);
 
+# ╔═╡ 333615ec-c5e9-422b-8bcd-b14388be4fcb
+λ_select = @bind λ NumberField(0:100; default=0);
+
+# ╔═╡ 0bffaa9a-3831-49da-b710-d890b8e163ff
+regularized = λ > 0
+
 # ╔═╡ 1a99c6f1-aa9f-444a-8de9-f790cc982a32
 controls = md"""
 Number of data points: $npoints_input
@@ -201,6 +210,8 @@ Number of data points: $npoints_input
 Split train/test: $split_train_test_select
 
 Maximum order: $max_order_input
+
+Regularization level: $λ_select
 
 Show: $show_f_select actual ``f``  $show_fit_select  fit ``f``  $show_train_select training data  $show_test_select test data
 """;
@@ -265,11 +276,21 @@ md"""
 ## Model fitting
 """
 
+# ╔═╡ bddafce9-30e4-4708-96ae-938bff9edfe7
+solve_regression(x, y) = x \ y
+
+# ╔═╡ ebb0c754-12f1-4f80-a5f6-98a61b915fa6
+solve_regression(x, y, λ) = (x'x + λ * I) \ (x'y) # ridge regression
+
 # ╔═╡ de8fa9b2-52f9-4b5c-b655-bd51b35598ea
 w = let
     p = 0:max_order
     terms = xtrain .^ p'
-    terms \ ytrain
+    if regularized
+        solve_regression(terms, ytrain, λ)
+    else
+        solve_regression(terms, ytrain)
+    end
 end
 
 # ╔═╡ 428cff77-f5fb-4965-9ee2-11a51bca299d
@@ -289,6 +310,7 @@ end
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
@@ -1234,6 +1256,8 @@ version = "0.9.1+5"
 # ╠═752afb9e-324c-4811-8f58-4c08b5efcc81
 # ╠═abf62564-b94c-4530-8717-2b76002c8c97
 # ╠═2cd176b5-d335-4aaf-b2d2-37fab7ce3cbf
+# ╠═333615ec-c5e9-422b-8bcd-b14388be4fcb
+# ╠═0bffaa9a-3831-49da-b710-d890b8e163ff
 # ╠═1a99c6f1-aa9f-444a-8de9-f790cc982a32
 # ╟─d8983a9d-1880-4dc4-9c17-23281767e0c2
 # ╠═5e7bda42-0266-4498-906d-9aca8b6c4bf3
@@ -1247,6 +1271,9 @@ version = "0.9.1+5"
 # ╠═a66ad35b-cfd2-4f19-b44e-9b6c76caeff7
 # ╠═4da595dd-065b-4ba6-8b1e-4efef80eae19
 # ╟─318a6643-5377-4152-8468-51dae1b78144
+# ╠═bddafce9-30e4-4708-96ae-938bff9edfe7
+# ╠═ebb0c754-12f1-4f80-a5f6-98a61b915fa6
+# ╠═a431112f-074f-4909-9b13-02387fc10b15
 # ╠═de8fa9b2-52f9-4b5c-b655-bd51b35598ea
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
