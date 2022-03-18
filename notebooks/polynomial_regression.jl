@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -15,90 +22,246 @@ macro bind(def, element)
 end
 
 # ╔═╡ ef43aef6-80ec-4976-91e6-84a74d29a83e
-using PlutoUI, Random, StatsPlots, LinearAlgebra, Turing
+using PlutoUI, Random, StatsPlots, LinearAlgebra, Turing, LaTeXStrings, DataFrames, Optim
 
 # ╔═╡ 2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
 md"""
 # Introduction
 
-In this example, we introduce regression models as an example of the supervised learning paradigm.
+In this example, we introduce some basic concepts of machine learning using regression as an example.
 """
 
 # ╔═╡ 18198312-54c3-4b4f-b865-3a6a775ce483
 md"""
 # The data
 
-Here, our data is XXX.
-We treat XXX as our features and XXX as our observations.
-[plot data]
+At regularly spaced points ``x``, we have generated fake, noisy observations ``y``.
 """
 
 # ╔═╡ cd49e0a5-4120-481a-965e-72e7bdaf867c
 md"""
 # Regression models
 
-Regression has its own terminology we will avoid here.
-We write instead ``f(x)``, where ``f(x)`` is an unknown function we want to approximate.
-
-# Loss function
-
-We then choose as our loss the L2 norm: ``L(x) = -\lVert y - f(x) \rVert^2``
+We want to construct a model that makes a prediction ``\hat{y}`` given ``x``.
+One way to do this is with regression.
+The simplest possible model we could fit is a horizontal line:
+````math
+\hat{y} = w_0
+````
 """
+
+# ╔═╡ 8eb34f0c-166b-4973-bdea-2ae64e3d34aa
+w0_slider = @bind w0 Slider(-5:0.001:5; default=0.3, show_value=true);
+
+# ╔═╡ 61238019-df77-4067-a9b4-0766d056e891
+md"``w_0 = `` $w0_slider"
+
+# ╔═╡ 5e7bda42-0266-4498-906d-9aca8b6c4bf3
+f(x) = sinpi(2x) + 2.5x
+
+# ╔═╡ 4c7e53c5-1271-4acf-95cc-5345564d1b15
+md"""
+But which is the best fit?
+The one that minimizes the error.
+So we need a notion of error, and then we want to find the line with the smallest error.
+This is called a _loss function_.
+Here, we choose the ``\ell^2`` loss function:
+````math
+L(\hat{y}, y) = \frac{1}{2}\sum_{i=1}^n (\hat{y}_i - y_i)^2
+````
+"""
+
+# ╔═╡ 3f4bffbb-51f4-4446-9b9c-cd3f99edfefa
+lossl2(yhat, y) = sum(abs2, yhat .- y) / 2
+
+# ╔═╡ 04c7209e-c4f8-454b-a883-cb2c5fac5203
+error(f_hat, x, y) = lossl2(f_hat.(x), y)
+
+# ╔═╡ 0b719897-4515-46c3-830a-eaec4d1666a2
+md"``w_0 = `` $w0_slider"
 
 # ╔═╡ ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 md"""
 # Linear regression
 
-For a linear regression model, we choose $f(x) = \alpha x + \beta$.
-This model assumes that the function can be well approximated by a straight line.
-[fit]
+For a better fit, let's give the line not only an intercept ``w_0`` but also also a slope ``w_1``:
+
+````math
+\hat{y} = w_0 + w_1 x
+````
 """
+
+# ╔═╡ 670bb91c-5b84-4e93-8288-90734f92b4f2
+w1_slider = @bind w1 Slider(-10:0.01:10; default=-3, show_value=true);
+
+# ╔═╡ 1159b9d5-d1b9-4f6d-b181-1f4e6fa9c0cc
+md"""
+``w_0 =`` $w0_slider ``\quad`` ``w_1 =`` $w1_slider
+"""
+
+# ╔═╡ 7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
+md"""
+# Automatically fitting parameters
+
+There are two problems with how we have been fitting parameters so far.
+First, it's manual.
+This won't scale to more than a few parameters.
+Second, it's fitting 1 parameter at a time, when ideally we would fit all at the same time.
+How can we automate the computer doing this for us?
+"""
+
+# ╔═╡ 6f75889b-1c7f-4261-bf27-7c991ee9e414
+md"""
+Here we're plotting a contour map for the value of the loss function for each pair of weight values.
+Take a look at the trajectory the computer followed.
+At each point, the next step is in a direction perpendicular to the level curve at that point.
+This is the direction of steepest descent.
+For any set of weights, a modern machine learning package can automatically compute this direction using a method called _backpropagation_, where it approximates how much each parameter is responsible for the error and should therefore change to minimize the error.
+
+In practice, the packages do this for you automatically so that you never need to backpropagate yourself.
+However, there are many more sophisticated optimizers than this one that rely on backpropagation.
+
+From now on, we will ignore backpropagation and the optimizer and treat them as a black box.
+"""
+
+# ╔═╡ 485c046d-8329-4541-bd9d-eb180c01bde6
+function plot_data!(
+    p,
+    x,
+    y;
+    xrange=(0, 1),
+    f_actual=nothing,
+    f_hat=nothing,
+    show_residuals=false,
+    data_color=:blue,
+)
+    if show_residuals && f_hat !== nothing
+        sticks!(p, x, y; fillrange=f_hat.(x), color=:red)
+    end
+    scatter!(p, x, y; xlabel=L"x", ylabel=L"y", color=data_color, msw=0, ms=2)
+    if f_actual !== nothing
+        plot!(p, f_actual, xrange...; color=:green, lw=2)
+    end
+    if f_hat !== nothing
+        plot!(p, f_hat, xrange...; color=:orange, lw=2)
+    end
+    plot!(p; legend=false)
+    return p
+end
+
+# ╔═╡ b9318fcf-117e-438e-8bb4-985a9372e2d8
+plot_data(x, y; kwargs...) = plot_data!(plot(), x, y; kwargs...)
 
 # ╔═╡ 74290eff-781b-44c9-8a90-96bffbe040df
 md"""
 # Model expansion
 
 Fitting the model gave us the best linear fit, which is obviously not great.
-To get a better fit, we need to choose a different form for $f(x)$, for which we have 2 strategies:
-1. Use what we know about the process approximated by $f$ to write down a more reasonable expression
-2. Use a form for $f$ that is highly expressive.
+To get a better fit, we need to choose a different form for $f(x)$.
+Without leaving our regression framework, we can select features.
 
-Approach (1) is more useful when we know a lot about the mechanism and/or we want to know more about any properties of the mechanism.
-Approach (2) is more useful when we don't know much about the mechanism and don't necessarily need to; we just care about good approximations.
-For this example, we take approach (2).
+Let ``g_j`` be a function that computes some feature ``j`` from ``x``.
+We'll approximate ``f`` as a linear combination of these features:
+
+```math
+\hat{y} = \sum_{j=1}^n w_j g_j(x)
+```
+
+Note that if ``g_j`` is a nonlinear function of ``x``, then ``\hat{y}`` is a nonlinear function of ``x`` but still a linear function of the weight vector ``w``.
+
+Let's try guessing useful scalar functions to add to ``g`` below:
+"""
+
+# ╔═╡ 876fa74c-9c30-4f0b-9a5b-82bb6597cd47
+g = [zero]
+
+# ╔═╡ 06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
+md"""
+This approach of manually selecting features works well when:
+1. we already can guess quite a lot about the function without looking at the data
+2. The function is simple enough that a very small number of features can be linearly combined to approximate it
+3. the data is small and simple enough that we can plot it and guess what features might be useful.
+
+Often in machine learning applications, we're not so lucky, so we need generic approaches to construct useful features.
 """
 
 # ╔═╡ ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
 md"""
 # Polynomial regression
 
-A useful expression for $f$ is
+One approach is to select increasing powers of ``x`` as the features.
 
-$$f(x) = \alpha_0 + \alpha_1 x + \alpha_2 x^2 + \alpha_3 x^3 + \ldots \alpha_n x^n = \sum_{i=0}^n \alpha_i x^i$$
+```math
+\hat{y}_i = w_0 + w_1 x_1 + w_2 x^2 \ldots w_n x^n = \sum_{j=0}^n w_j x_i^j
+```
 
 Functions of the form of $f$ are called _polynomials_, and any smooth function can be exactly computed with infinite terms (i.e. $n \to \infty$) or approximated with finite terms (by picking some manageable $n$).
-Linear regression is the special case $n=1$.
-"""
 
-# ╔═╡ b0cdc9d6-738a-4583-b821-052ada846d39
-# fit polynomial with slider to change n from, say, 0 to 100
+Linear regression is the special case $n=1$, though note again that here ``\hat{y}`` is still linear with respect to the weights ``w``.
+"""
 
 # ╔═╡ 1f1e9c9b-e5fa-41b1-852f-cadad703ee4b
 md"""
 # Model complexity
 
-We see that by increasing $n$, we fit the data better and better.
-But, at some point it seems we're just playing connect-the-dots between the data-points.
-[talk about model complexity, ask questions about whether such a detailed model is reasonable and discuss when it is not.]
+We see that for low ``n``, we don't fit the data very well, but by ``n=3`` we get quite a good fit.
+By the time we reach ``n=9``, the model is so flexible, it's able to perfectly hit every data point, so that the loss is 0.
+As we increase ``n``, additional weights take on very large values, even though they cannot fit the data any better.
+
+Question: which model is best?
 """
 
 # ╔═╡ 39414e5e-1256-4497-9738-e2ecdff62d9d
 md"""
-# Cross-validation
+# Cross-validation and model selection
 
-A reasonable way to choose $n$ is by evaluating predictive performance on left-out data.
-[Introduce cross-validation. Compute 5-fold CV. Plot MSE of test data as a function of $n$.]
+The goal is to have a model that not only fits the data well but has also learned something about the target function.
+That is, we want a model that also generalizes well to data that was not used to fit it.
+To check this for our models, we use a test dataset ``(x_\mathrm{test}, y_\mathrm{test})``, data similar to ``(x, y)`` that we only use to test our approximate function.
+
+To evaluate error, we use the scalaed root-mean-squared error:
+```math
+E_\mathrm{RMS} = \sqrt{\frac{2L(\hat{y}, y)}{n}}
+```
 """
+
+# ╔═╡ 7fa55e99-5c0c-465d-a879-bd844e516131
+error_rms(fhat, x, y; method=error) = sqrt(method(fhat, x, y) * 2//length(x))
+
+# ╔═╡ 6fb68c61-1ef0-4efc-bcbc-dd9d219c3ebb
+md"""
+# Regularization
+
+It may seem a little strange that adding more weights can make the model worse, since the simpler model is contained within the more compplex one.
+One way to understand this is to look at the fitted values of the weights as we add more weights.
+"""
+
+# ╔═╡ c50f50f4-84a3-4a81-bacc-b8ce99d6b257
+md"""
+Watch what happens as we increase the number of data points.
+We can increase the number of degrees of freedom of the model without getting the wild oscillations that we saw when the data was more sparse.
+However, this does not mean that our error on the test data continues to decrease.
+For 1000 data points, we find that the minimum ``E_\mathrm{RMS}`` is at ``n=5``.
+"""
+
+# ╔═╡ fe2c7c2b-63e3-4cbf-b432-b028ec599292
+md"""
+Ideally, we would have an approach that avoids overfitting regardless of the amount of data being used.
+We can in fact do this by _regularizing_ the weights.
+In effect, we add a term to our loss function that penalizes large weight values.
+Our regularized error function is
+
+```math
+\tilde{E}(w) = E(w) + \frac{\lambda}{2}\sum_{i=1}^n w_i^2.
+```
+
+The strength of the penalization is controlled by the magnitude of ``\lambda``.
+When ``\lambda=0``, we apply no regularization, and the weights are fit only by the data.
+When ``\lambda`` is very large, the regularization term dominates, and it takes very strong signal in the data to move the weights away from 0.
+"""
+
+# ╔═╡ a2f40cbe-f46f-44c6-a81f-aae082c27c1a
+logλ_input = @bind logλ Slider([-Inf; -20:1:0]; default=-Inf, show_value=true)
 
 # ╔═╡ 73444608-d0de-440d-8be3-5a02dadcadc7
 md"""
@@ -115,18 +278,6 @@ md"""
 What we have been doing so far is computing the maximum-likelihood (a posteriori) estimate of this regression model, i.e. the set of parameters that distribution of parameters given data has its peak [show visualization].
 To quantify the uncertainty, we can instead visualize the distribution of parameters.
 Each set of parameters defines a curve, so we can visualize this distribution by visualizing random curves:
-"""
-
-# ╔═╡ e0ec835f-e9dd-4660-93bc-c26d0ba732e5
-md"""
-Alternatively, we can get draw, say, 90% intervals around the single best fit to get a lower-bound on the uncertainty.
-"""
-
-# ╔═╡ c7912586-f4f6-450b-999f-936339898997
-md"""
-# Relationship to neural nets
-
-[not certain if we want this]
 """
 
 # ╔═╡ 3991be1c-01f3-416a-a841-18f025a97e24
@@ -169,102 +320,114 @@ This section contains UI elements and variables they are bound to.
 # ╔═╡ 2cc52188-b262-4f65-b042-ad94d90523d8
 npoints_input = @bind npoints NumberField(1:1_000; default=10);
 
+# ╔═╡ f32db22e-d111-4bf5-9989-a698b0d22626
+npoints_input
+
 # ╔═╡ 4b98bd17-de33-4648-b737-6b175905b2c7
 max_order_input = @bind max_order NumberField(0:100; default=0);
 
-# ╔═╡ dc41b9b2-2249-4f75-92f4-1b138e9e5f51
-split_train_test_select = @bind split_train_test CheckBox(; default=false);
+# ╔═╡ b0cdc9d6-738a-4583-b821-052ada846d39
+max_order_input
 
-# ╔═╡ 82024569-0314-43c9-9700-97aa1c044fbf
-show_f_select = @bind show_f CheckBox(; default=true);
+# ╔═╡ 06dee467-1f54-48e1-908d-8e4c9028a748
+max_order_input
 
-# ╔═╡ 752afb9e-324c-4811-8f58-4c08b5efcc81
-show_fit_select = @bind show_fit CheckBox(; default=false);
+# ╔═╡ efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
+max_order_input
 
-# ╔═╡ abf62564-b94c-4530-8717-2b76002c8c97
-show_train_select = @bind show_train CheckBox(; default=false);
-
-# ╔═╡ 2cd176b5-d335-4aaf-b2d2-37fab7ce3cbf
-show_test_select = @bind show_test CheckBox(; default=false);
-
-# ╔═╡ 333615ec-c5e9-422b-8bcd-b14388be4fcb
-λ_select = @bind λ NumberField(0:100; default=0);
-
-# ╔═╡ e052305c-fc4b-44b8-b64b-1022a5dd4dc3
-show_posterior_select = @bind show_posterior CheckBox(; default=false);
-
-# ╔═╡ 0bffaa9a-3831-49da-b710-d890b8e163ff
-regularized = λ > 0
-
-# ╔═╡ 1a99c6f1-aa9f-444a-8de9-f790cc982a32
-controls = md"""
-Number of data points: $npoints_input
-
-Split train/test: $split_train_test_select
-
-Maximum order: $max_order_input
-
-Regularization level: $λ_select
-
-Show fit distribution: $show_posterior_select
-
-Show: $show_f_select actual ``f``  $show_fit_select  fit ``f``  $show_train_select training data  $show_test_select test data
-""";
-
-# ╔═╡ cb530573-e467-49c8-a9c1-d8de1b502c67
-controls
+# ╔═╡ e2890775-2e29-4244-adac-c37f8f2a8a8e
+max_order_input
 
 # ╔═╡ d8983a9d-1880-4dc4-9c17-23281767e0c2
 md"## Definitions"
-
-# ╔═╡ 5e7bda42-0266-4498-906d-9aca8b6c4bf3
-f(x) = sinpi(2x)
-
-# ╔═╡ 449f1aae-57b4-4b24-98d9-32c514e00821
-error_actual = 0.2
 
 # ╔═╡ ba0545e7-c6df-42e2-a9cd-4ecd490d13e8
 md"""
 ## Data generation
 """
 
+# ╔═╡ 449f1aae-57b4-4b24-98d9-32c514e00821
+error_actual = 0.2
+
+# ╔═╡ 510f07d9-62e0-40a7-b974-e2ae9bad7f73
+function generate_data(f, x, error; rng=Random.GLOBAL_RNG)
+    return f.(x) .+ randn.(rng) .* error
+end
+
+# ╔═╡ 905793d5-93c5-4d86-9a88-33d6d806d88a
+ndata = 10
+
+# ╔═╡ c17da7e0-d701-45e6-9967-b2cb0d2b057e
+data_seed = 42
+
+# ╔═╡ d9a82c82-576e-4ee5-a8be-aea1332b3e74
+data_test_seed = 63
+
 # ╔═╡ b77903d1-c788-4efd-80c4-313859e856e5
-x = range(0, 1; length=npoints)
+x = collect(range(0, 1; length=ndata))
 
 # ╔═╡ 01af74cf-172d-4561-a7d9-6131a22b4161
-y = let
-    # set a seed so the plots are reproducible
-    rng = MersenneTwister(42)
-    @. f(x) + randn(rng) * error_actual
+y = generate_data(f, x, error_actual; rng=MersenneTwister(data_seed))
+
+# ╔═╡ 1b4812d4-3879-4a79-a95d-20cad2959f5c
+plot_data(x, y)
+
+# ╔═╡ 72198269-d070-493f-92eb-36135692ca8f
+plot_data(x, y; f_hat=x -> w0, show_residuals=true)
+
+# ╔═╡ 288aa7d7-8785-4f55-95e6-409e2ceb203a
+let
+    f_hat(x) = w0
+    loss = round(error(f_hat, x, y); digits=2)
+    p = plot_data(x, y; f_hat, show_residuals=true)
+    plot!(p; title="loss: $loss")
 end
 
-# ╔═╡ 8924cb14-da05-4868-91c4-49906798fc56
-md"""
-## Splitting data into train/test datasets
-"""
-
-# ╔═╡ 696ff9c0-9e0d-4aeb-ae2a-72a24b401aed
-function train_test_indices(x, frac_test=0.5; rng=Random.GLOBAL_RNG)
-    n = length(x)
-    ntest = ceil(Int, frac_test * n)
-    @assert ntest < n
-    inds = shuffle(rng, eachindex(x))
-    itrain = inds[(ntest + 1):n]
-    itest = inds[1:ntest]
-    return itrain, itest
+# ╔═╡ 345ae96b-92c2-4ac4-bfdf-302113627ffb
+let
+    f_hat(x) = w0 + w1 * x
+    loss = round(error(f_hat, x, y); digits=2)
+    p = plot_data(x, y; f_hat, show_residuals=true)
+    plot!(p; title="loss: $loss")
 end
 
-# ╔═╡ 4f54f644-c50b-4669-b7c4-e02000c410a3
-itrain, itest = let
-    rng = MersenneTwister(37)
-    train_test_indices(x, split_train_test ? 0.2 : 0; rng)
+# ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
+let
+    f_hat(x) = w0 + w1 * x
+    loss = round(error(f_hat, x, y); digits=2)
+    scatter([w0], [w1]; xlims=(-5, 5), ylims=(-10, 10))
 end
 
-# ╔═╡ a66ad35b-cfd2-4f19-b44e-9b6c76caeff7
-xtrain, ytrain = x[itrain], y[itrain]
+# ╔═╡ 942f314e-927b-4371-8c83-83801c860b4d
+line_trace = let
+    obj(w) = error(x -> w[1] + w[2] * x, x, y)
+    winit = [0.0, 0.0]
+    optimizer = Optim.GradientDescent(; linesearch=Optim.LineSearches.BackTracking())
+    options = Optim.Options(; store_trace=true, extended_trace=true)
+    res = Optim.optimize(obj, winit, optimizer, options)
+    wtrace = Optim.x_trace(res)
+end
 
-# ╔═╡ 4da595dd-065b-4ba6-8b1e-4efef80eae19
-xtest, ytest = x[itest], y[itest]
+# ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db
+let
+    obj(w) = error(x -> w[1] + w[2] * x, x, y)
+    plot(first.(line_trace), last.(line_trace); seriestype=:scatterpath, ms=2, msw=0)
+    scatter!([w0], [w1]; xlabel="w0", ylabel="w1", msw=0)
+    contour!(-1:0.01:2, -1:0.01:2, (w0, w1) -> obj([w0, w1]); levels=100)
+    plot!(; aspect_ratio=1)
+end
+
+# ╔═╡ 5def5552-fc0e-4e44-bed2-49edd810c75a
+ytest = generate_data(f, x, error_actual; rng=MersenneTwister(data_test_seed))
+
+# ╔═╡ a2e8fdca-7f23-4f94-8b94-502ff29500bc
+xmore = collect(range(0, 1; length=npoints))
+
+# ╔═╡ 072bf511-749d-421b-8e56-d706da88f031
+ymore = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_seed))
+
+# ╔═╡ f6f3c9b7-dd9d-4f7b-9626-93534c15f199
+ymore_test = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_test_seed))
 
 # ╔═╡ 318a6643-5377-4152-8468-51dae1b78144
 md"""
@@ -277,15 +440,147 @@ solve_regression(x, y) = x \ y
 # ╔═╡ ebb0c754-12f1-4f80-a5f6-98a61b915fa6
 solve_regression(x, y, λ) = (x'x + λ * I) \ (x'y) # ridge regression
 
-# ╔═╡ de8fa9b2-52f9-4b5c-b655-bd51b35598ea
-w = let
-    p = 0:max_order
-    features = xtrain .^ p'
-    if regularized
-        solve_regression(features, ytrain, λ)
-    else
-        solve_regression(features, ytrain)
+# ╔═╡ a5fe54fb-4f92-4a35-8038-8d36a4aa065c
+begin
+    struct PolyModel{T<:Real,L<:Real,W<:AbstractVector{T}}
+        w::W
+        λ::L
     end
+    PolyModel(max_order::Int, λ=0) = PolyModel(zeros(max_order + 1), λ)
+
+    function (m::PolyModel)(x)
+        w = m.w
+        p = 0:(length(w) - 1)
+        return dot(x .^ p, w)
+    end
+
+    function fit!(m::PolyModel, x, y)
+        w = m.w
+        p = 0:(length(w) - 1)
+        features = x .^ p'
+        if iszero(m.λ)
+            w .= solve_regression(features, y)
+        else
+            w .= solve_regression(features, y, m.λ)
+        end
+        return m
+    end
+end;
+
+# ╔═╡ 3b7fe147-ea94-422f-a943-6f3bd577edf1
+f_hat_poly = fit!(PolyModel(max_order), x, y)
+
+# ╔═╡ fc64996f-54ba-4c7a-8cfb-21133cec1fbe
+let
+    err = round(error(f_hat_poly, x, y); digits=2)
+    p = plot_data(x, y; f_hat=x -> f_hat_poly(x), show_residuals=true)
+    plot!(p; title="\$E = $err \$")
+end
+
+# ╔═╡ e3dbe2f5-7e97-45b7-9b75-1acaf8f1031b
+let
+    plots = map([0, 1, 3, 9]) do max_order
+        f_hat = fit!(PolyModel(max_order), x, y)
+        p = plot_data(x, y; f_hat=x -> f_hat(x), show_residuals=false)
+        plot!(p; title="\$n=$max_order\$")
+    end
+    plot(plots...)
+end
+
+# ╔═╡ aa7b8b58-f959-47de-84d7-8c9cf3ad96be
+let
+    p = plot_data(
+        x, ytest; f_hat=x -> f_hat_poly(x), data_color=:magenta, show_residuals=true
+    )
+    plot_data!(p, x, y)
+    max_orders = 0:max(10, max_order)
+    rmse_values = map(max_orders) do n
+        m = fit!(PolyModel(n), x, y)
+        return error_rms(m, x, y), error_rms(m, x, ytest)
+    end
+    p2 = plot(max_orders, first.(rmse_values); color=:blue, lw=2, label="training")
+    plot!(p2, max_orders, last.(rmse_values); color=:magenta, lw=2, label="test")
+    scatter!(
+        p2,
+        [max_order],
+        [rmse_values[max_order + 1]...]';
+        color=[:blue :magenta],
+        msw=0,
+        ms=3,
+        label="",
+    )
+    plot!(p2; legend=:topright, xlabel=L"n", ylabel=L"E_\mathrm{RMS}", ylims=(-0.01, NaN))
+    plot(p, p2)
+end
+
+# ╔═╡ a9163072-cad9-4b0b-b154-d315c6b68de4
+let
+    max_orders = [0, 1, 3, 6, 9]
+    pairs = map(max_orders) do n
+        m = fit!(PolyModel(n), x, y)
+        # pad with `missing`s
+        "$n" => [m.w; fill(md"", maximum(max_orders) - n)]
+    end
+    DataFrame(pairs)
+end
+
+# ╔═╡ 444e4eba-9b5a-4e37-8853-5d24c5c398ca
+let
+    x, y, ytest = xmore, ymore, ymore_test
+    f_hat = fit!(PolyModel(max_order), x, y)
+    p = plot_data(x, ytest; f_hat=x -> f_hat(x), data_color=:magenta, show_residuals=false)
+    # plot_data!(p, x, y)
+    max_orders = 0:max(10, max_order)
+    rmse_values = map(max_orders) do n
+        m = fit!(PolyModel(n), x, y)
+        return error_rms(m, x, y), error_rms(m, x, ytest)
+    end
+    p2 = plot(max_orders, first.(rmse_values); color=:blue, lw=2, label="training")
+    plot!(p2, max_orders, last.(rmse_values); color=:magenta, lw=2, label="test")
+    scatter!(
+        p2,
+        [max_order],
+        [rmse_values[max_order + 1]...]';
+        color=[:blue :magenta],
+        msw=0,
+        ms=3,
+        label="",
+    )
+    plot!(p2; legend=:topright, xlabel=L"n", ylabel=L"E_\mathrm{RMS}", ylims=(-0.01, NaN))
+    plot(p, p2)
+end
+
+# ╔═╡ 63d99d6f-addf-4efc-a680-d4c4733e3941
+function error_reg(m::PolyModel, x, y)
+    return error(m, x, y) + sum(abs2, m.w) * m.λ / 2
+end
+
+# ╔═╡ 645525f1-77cb-4b18-81df-3eafc0b4004e
+let
+    λ = exp(logλ)
+    f_hat_poly = fit!(PolyModel(max_order, λ), x, y)
+    p = plot_data(
+        x, ytest; f_hat=x -> f_hat_poly(x), data_color=:magenta, show_residuals=true
+    )
+    plot_data!(p, x, y)
+    max_orders = 0:max(10, max_order)
+    rmse_values = map(max_orders) do n
+        m = fit!(PolyModel(n, λ), x, y)
+        return error_rms(m, x, y), error_rms(m, x, ytest)
+    end
+    p2 = plot(max_orders, first.(rmse_values); color=:blue, lw=2, label="training")
+    plot!(p2, max_orders, last.(rmse_values); color=:magenta, lw=2, label="test")
+    scatter!(
+        p2,
+        [max_order],
+        [rmse_values[max_order + 1]...]';
+        color=[:blue :magenta],
+        msw=0,
+        ms=3,
+        label="",
+    )
+    plot!(p2; legend=:topright, xlabel=L"n", ylabel=L"E_\mathrm{RMS}", ylims=(-0.01, NaN))
+    plot(p, p2)
 end
 
 # ╔═╡ 7e532caa-b8a5-43ab-af4a-4590ffd1a9dc
@@ -308,11 +603,6 @@ end
 # ╔═╡ 4d51d646-7573-421a-8977-1b5b7ad6fa79
 model = poly_regress(xtrain, ytrain, max_order; λ, σ=error_actual);
 
-# ╔═╡ 2246c8a0-e4cb-4b06-a373-610122795574
-if show_posterior
-    chns = sample(MersenneTwister(38), model, NUTS(500, 0.8), 500)
-end
-
 # ╔═╡ 35e70aa4-7b87-4730-8e05-f39d29c20a9e
 function rand_weights(chns, n=10; rng=Random.GLOBAL_RNG)
     warray = permutedims(cat(get(chns, :w).w...; dims=3), (3, 2, 1))
@@ -321,36 +611,45 @@ function rand_weights(chns, n=10; rng=Random.GLOBAL_RNG)
     return [wdraws[:, i] for i in inds]
 end
 
-# ╔═╡ 428cff77-f5fb-4965-9ee2-11a51bca299d
-let
-    xlims = (-0.01, 1.01)
-    ymax = max(maximum(abs, y), 1)
-    ylims = (-ymax * 1.5, ymax * 1.5)
-    plot()
-    xvals = range(0, 1; length=1_000)
-    show_f && plot!(xvals, f; color=:blue, lw=2)
-    show_train && scatter!(xtrain, ytrain; color=:black, ms=3, msw=0)
-    show_test && scatter!(xtest, ytest; color=:red, ms=3, msw=0, m=:diamond)
-    show_fit && plot!(xvals, x -> evalpoly(x, w); color=:magenta, lw=2)
-    if show_posterior
-        rng = MersenneTwister(90)
-        for wdraw in rand_weights(chns, 100; rng)
-            plot!(xvals, x -> evalpoly(x, wdraw); color=:magenta, lw=1, alpha=0.05)
+# ╔═╡ 4748a526-8d2e-43a6-8f30-82abf238d624
+begin
+    # compute feature matrix
+    function compute_features(g, x)
+        z = similar(x, length(x)..., length(g)...)
+        for j in eachindex(g)
+            z[:, j] .= g[j].(x)
         end
+        return z
     end
-    plot!(; xlabel=:x, ylabel=:y, legend=false, xlims, ylims)
+    # compute feature vector
+    compute_features(g, x::Real) = map(gj -> gj(x), g)
+end
+
+# ╔═╡ 34bad558-e70f-4d46-a9ab-7acc6c89db7a
+let
+    w = solve_regression(compute_features(g, x), y)
+    f_hat(x) = dot(compute_features(g, x), w)
+    err = round(error(f_hat, x, y); digits=2)
+    p = plot_data(x, y; f_hat, show_residuals=true)
+    plot!(p; title="\$E = $err \$")
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 
 [compat]
+DataFrames = "~1.3.2"
+LaTeXStrings = "~1.3.0"
+Optim = "~1.6.2"
 PlutoUI = "~0.7.37"
 StatsPlots = "~0.14.33"
 Turing = "~0.21.0"
@@ -602,6 +901,12 @@ git-tree-sha1 = "cc70b17275652eb47bc9e5f81635981f13cea5c8"
 uuid = "9a962f9c-6df0-11e9-0e5d-c546b8b5ee8a"
 version = "1.9.0"
 
+[[deps.DataFrames]]
+deps = ["Compat", "DataAPI", "Future", "InvertedIndices", "IteratorInterfaceExtensions", "LinearAlgebra", "Markdown", "Missings", "PooledArrays", "PrettyTables", "Printf", "REPL", "Reexport", "SortingAlgorithms", "Statistics", "TableTraits", "Tables", "Unicode"]
+git-tree-sha1 = "ae02104e835f219b8930c7664b8012c93475c340"
+uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+version = "1.3.2"
+
 [[deps.DataStructures]]
 deps = ["Compat", "InteractiveUtils", "OrderedCollections"]
 git-tree-sha1 = "3daef5523dd2e769dad2365274f760ff5f282c7d"
@@ -746,6 +1051,12 @@ deps = ["LinearAlgebra", "Random", "SparseArrays", "Statistics"]
 git-tree-sha1 = "0dbc5b9683245f905993b51d2814202d75b34f1a"
 uuid = "1a297f60-69ca-5386-bcde-b61e274b549b"
 version = "0.13.1"
+
+[[deps.FiniteDiff]]
+deps = ["ArrayInterface", "LinearAlgebra", "Requires", "SparseArrays", "StaticArrays"]
+git-tree-sha1 = "56956d1e4c1221000b7781104c58c34019792951"
+uuid = "6a86dc24-6348-571c-b903-95158fe2bd41"
+version = "2.11.0"
 
 [[deps.FixedPointNumbers]]
 deps = ["Statistics"]
@@ -1090,6 +1401,12 @@ git-tree-sha1 = "7f3efec06033682db852f8b3bc3c1d2b0a0ab066"
 uuid = "38a345b3-de98-5d2b-a5d3-14cd9215e700"
 version = "2.36.0+0"
 
+[[deps.LineSearches]]
+deps = ["LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "Printf"]
+git-tree-sha1 = "f27132e551e959b3667d8c93eae90973225032dd"
+uuid = "d3d80556-e9d4-5f37-9878-2ab0fcc64255"
+version = "7.1.1"
+
 [[deps.LinearAlgebra]]
 deps = ["Libdl", "libblastrampoline_jll"]
 uuid = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -1187,6 +1504,12 @@ git-tree-sha1 = "7008a3412d823e29d370ddc77411d593bd8a3d03"
 uuid = "6f286f6a-111f-5878-ab1e-185364afe411"
 version = "0.9.1"
 
+[[deps.NLSolversBase]]
+deps = ["DiffResults", "Distributed", "FiniteDiff", "ForwardDiff"]
+git-tree-sha1 = "50310f934e55e5ca3912fb941dec199b49ca9b68"
+uuid = "d41bc354-129a-5804-8e4c-c37616107c6c"
+version = "7.8.2"
+
 [[deps.NNlib]]
 deps = ["Adapt", "ChainRulesCore", "Compat", "LinearAlgebra", "Pkg", "Requires", "Statistics"]
 git-tree-sha1 = "a59a614b8b4ea6dc1dcec8c6514e251f13ccbe10"
@@ -1255,6 +1578,12 @@ git-tree-sha1 = "13652491f6856acfd2db29360e1bbcd4565d04f1"
 uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
 version = "0.5.5+0"
 
+[[deps.Optim]]
+deps = ["Compat", "FillArrays", "ForwardDiff", "LineSearches", "LinearAlgebra", "NLSolversBase", "NaNMath", "Parameters", "PositiveFactorizations", "Printf", "SparseArrays", "StatsBase"]
+git-tree-sha1 = "bc0a748740e8bc5eeb9ea6031e6f050de1fc0ba2"
+uuid = "429524aa-4258-5aef-a3af-852621145aeb"
+version = "1.6.2"
+
 [[deps.Opus_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "51a08fb14ec28da2ec7a927c4337e4332c2a4720"
@@ -1277,6 +1606,12 @@ deps = ["LinearAlgebra", "SparseArrays", "SuiteSparse"]
 git-tree-sha1 = "e8185b83b9fc56eb6456200e873ce598ebc7f262"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
 version = "0.11.7"
+
+[[deps.Parameters]]
+deps = ["OrderedCollections", "UnPack"]
+git-tree-sha1 = "34c0e9ad262e5f7fc75b10a9952ca7692cfc5fbe"
+uuid = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+version = "0.12.3"
 
 [[deps.Parsers]]
 deps = ["Dates"]
@@ -1317,6 +1652,18 @@ deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript"
 git-tree-sha1 = "bf0a1121af131d9974241ba53f601211e9303a9e"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 version = "0.7.37"
+
+[[deps.PooledArrays]]
+deps = ["DataAPI", "Future"]
+git-tree-sha1 = "db3a23166af8aebf4db5ef87ac5b00d36eb771e2"
+uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
+version = "1.4.0"
+
+[[deps.PositiveFactorizations]]
+deps = ["LinearAlgebra"]
+git-tree-sha1 = "17275485f373e6673f7e7f97051f703ed5b15b20"
+uuid = "85a6dd25-e78a-55b7-8502-1745935b8125"
+version = "0.2.4"
 
 [[deps.Preferences]]
 deps = ["TOML"]
@@ -1883,21 +2230,58 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╟─cb530573-e467-49c8-a9c1-d8de1b502c67
-# ╠═428cff77-f5fb-4965-9ee2-11a51bca299d
-# ╠═2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
-# ╠═18198312-54c3-4b4f-b865-3a6a775ce483
-# ╠═cd49e0a5-4120-481a-965e-72e7bdaf867c
-# ╠═ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
-# ╠═74290eff-781b-44c9-8a90-96bffbe040df
-# ╠═ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
+# ╟─2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
+# ╟─18198312-54c3-4b4f-b865-3a6a775ce483
+# ╠═1b4812d4-3879-4a79-a95d-20cad2959f5c
+# ╟─cd49e0a5-4120-481a-965e-72e7bdaf867c
+# ╠═8eb34f0c-166b-4973-bdea-2ae64e3d34aa
+# ╟─61238019-df77-4067-a9b4-0766d056e891
+# ╠═72198269-d070-493f-92eb-36135692ca8f
+# ╠═5e7bda42-0266-4498-906d-9aca8b6c4bf3
+# ╟─4c7e53c5-1271-4acf-95cc-5345564d1b15
+# ╠═3f4bffbb-51f4-4446-9b9c-cd3f99edfefa
+# ╠═04c7209e-c4f8-454b-a883-cb2c5fac5203
+# ╟─0b719897-4515-46c3-830a-eaec4d1666a2
+# ╠═288aa7d7-8785-4f55-95e6-409e2ceb203a
+# ╟─ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
+# ╠═670bb91c-5b84-4e93-8288-90734f92b4f2
+# ╟─1159b9d5-d1b9-4f6d-b181-1f4e6fa9c0cc
+# ╠═345ae96b-92c2-4ac4-bfdf-302113627ffb
+# ╟─7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
+# ╠═0d1164df-8236-494b-b8b9-71481c94c0d9
+# ╠═942f314e-927b-4371-8c83-83801c860b4d
+# ╟─6f75889b-1c7f-4261-bf27-7c991ee9e414
+# ╠═6016a736-11da-4451-aa82-cc3045e782db
+# ╠═485c046d-8329-4541-bd9d-eb180c01bde6
+# ╠═b9318fcf-117e-438e-8bb4-985a9372e2d8
+# ╟─74290eff-781b-44c9-8a90-96bffbe040df
+# ╠═876fa74c-9c30-4f0b-9a5b-82bb6597cd47
+# ╠═34bad558-e70f-4d46-a9ab-7acc6c89db7a
+# ╟─06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
+# ╟─ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
 # ╠═b0cdc9d6-738a-4583-b821-052ada846d39
-# ╠═1f1e9c9b-e5fa-41b1-852f-cadad703ee4b
-# ╠═39414e5e-1256-4497-9738-e2ecdff62d9d
+# ╠═3b7fe147-ea94-422f-a943-6f3bd577edf1
+# ╠═fc64996f-54ba-4c7a-8cfb-21133cec1fbe
+# ╟─1f1e9c9b-e5fa-41b1-852f-cadad703ee4b
+# ╠═e3dbe2f5-7e97-45b7-9b75-1acaf8f1031b
+# ╠═a5fe54fb-4f92-4a35-8038-8d36a4aa065c
+# ╟─39414e5e-1256-4497-9738-e2ecdff62d9d
+# ╠═7fa55e99-5c0c-465d-a879-bd844e516131
+# ╠═06dee467-1f54-48e1-908d-8e4c9028a748
+# ╠═aa7b8b58-f959-47de-84d7-8c9cf3ad96be
+# ╟─6fb68c61-1ef0-4efc-bcbc-dd9d219c3ebb
+# ╟─a9163072-cad9-4b0b-b154-d315c6b68de4
+# ╟─c50f50f4-84a3-4a81-bacc-b8ce99d6b257
+# ╠═f32db22e-d111-4bf5-9989-a698b0d22626
+# ╠═efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
+# ╠═444e4eba-9b5a-4e37-8853-5d24c5c398ca
+# ╟─fe2c7c2b-63e3-4cbf-b432-b028ec599292
+# ╠═63d99d6f-addf-4efc-a680-d4c4733e3941
+# ╠═a2f40cbe-f46f-44c6-a81f-aae082c27c1a
+# ╠═e2890775-2e29-4244-adac-c37f8f2a8a8e
+# ╠═645525f1-77cb-4b18-81df-3eafc0b4004e
 # ╠═73444608-d0de-440d-8be3-5a02dadcadc7
 # ╠═3fc67210-6df1-481b-8aa4-48865f9f46b5
-# ╠═e0ec835f-e9dd-4660-93bc-c26d0ba732e5
-# ╠═c7912586-f4f6-450b-999f-936339898997
 # ╠═3991be1c-01f3-416a-a841-18f025a97e24
 # ╠═ba59678b-1606-4132-9f19-0dae1e660195
 # ╠═ed7cb5c1-528a-4356-80dd-b337107eaf1f
@@ -1907,33 +2291,25 @@ version = "0.9.1+5"
 # ╟─c75744a0-3c3f-4042-a796-6cbd9ec11195
 # ╠═2cc52188-b262-4f65-b042-ad94d90523d8
 # ╠═4b98bd17-de33-4648-b737-6b175905b2c7
-# ╠═dc41b9b2-2249-4f75-92f4-1b138e9e5f51
-# ╠═82024569-0314-43c9-9700-97aa1c044fbf
-# ╠═752afb9e-324c-4811-8f58-4c08b5efcc81
-# ╠═abf62564-b94c-4530-8717-2b76002c8c97
-# ╠═2cd176b5-d335-4aaf-b2d2-37fab7ce3cbf
-# ╠═333615ec-c5e9-422b-8bcd-b14388be4fcb
-# ╠═e052305c-fc4b-44b8-b64b-1022a5dd4dc3
-# ╠═0bffaa9a-3831-49da-b710-d890b8e163ff
-# ╠═1a99c6f1-aa9f-444a-8de9-f790cc982a32
 # ╟─d8983a9d-1880-4dc4-9c17-23281767e0c2
-# ╠═5e7bda42-0266-4498-906d-9aca8b6c4bf3
-# ╠═449f1aae-57b4-4b24-98d9-32c514e00821
 # ╟─ba0545e7-c6df-42e2-a9cd-4ecd490d13e8
+# ╠═449f1aae-57b4-4b24-98d9-32c514e00821
+# ╠═510f07d9-62e0-40a7-b974-e2ae9bad7f73
+# ╠═905793d5-93c5-4d86-9a88-33d6d806d88a
+# ╠═c17da7e0-d701-45e6-9967-b2cb0d2b057e
+# ╠═d9a82c82-576e-4ee5-a8be-aea1332b3e74
 # ╠═b77903d1-c788-4efd-80c4-313859e856e5
 # ╠═01af74cf-172d-4561-a7d9-6131a22b4161
-# ╟─8924cb14-da05-4868-91c4-49906798fc56
-# ╠═696ff9c0-9e0d-4aeb-ae2a-72a24b401aed
-# ╠═4f54f644-c50b-4669-b7c4-e02000c410a3
-# ╠═a66ad35b-cfd2-4f19-b44e-9b6c76caeff7
-# ╠═4da595dd-065b-4ba6-8b1e-4efef80eae19
+# ╠═5def5552-fc0e-4e44-bed2-49edd810c75a
+# ╠═a2e8fdca-7f23-4f94-8b94-502ff29500bc
+# ╠═072bf511-749d-421b-8e56-d706da88f031
+# ╠═f6f3c9b7-dd9d-4f7b-9626-93534c15f199
 # ╟─318a6643-5377-4152-8468-51dae1b78144
 # ╠═bddafce9-30e4-4708-96ae-938bff9edfe7
 # ╠═ebb0c754-12f1-4f80-a5f6-98a61b915fa6
-# ╠═de8fa9b2-52f9-4b5c-b655-bd51b35598ea
 # ╠═7e532caa-b8a5-43ab-af4a-4590ffd1a9dc
 # ╠═4d51d646-7573-421a-8977-1b5b7ad6fa79
-# ╠═2246c8a0-e4cb-4b06-a373-610122795574
 # ╠═35e70aa4-7b87-4730-8e05-f39d29c20a9e
+# ╠═4748a526-8d2e-43a6-8f30-82abf238d624
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
