@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -17,10 +24,17 @@ end
 # ╔═╡ ef43aef6-80ec-4976-91e6-84a74d29a83e
 begin
     using PlutoUI,
-        Random, StatsPlots, LinearAlgebra, Turing, LaTeXStrings, DataFrames, Optim, LogExpFunctions
+        Random,
+        StatsPlots,
+        LinearAlgebra,
+        Turing,
+        LaTeXStrings,
+        DataFrames,
+        Optim,
+        LogExpFunctions
     using Turing: Flat
-	using Symbolics: Sym, @variables, simplify, expand
-	using Latexify
+    using Symbolics: Sym, @variables, simplify, expand
+    using Latexify
 end
 
 # ╔═╡ 4004013d-6fd6-4e8c-a218-745cb33efef4
@@ -90,12 +104,36 @@ Because we have two weights, we can plot the combination of weights on a 2D grid
 f_hat_line(x) = w0_2 + w1 * x
 
 # ╔═╡ 67486053-5971-406b-8680-0d80803d797a
-line_trace_manual = [[0.3, -3], [2.704, -3], [2.704, -1.94], [2.243, -1.94], [2.243, -0.93], [1.577, -0.93], [1.577, -0.16], [1.266, -0.16], [1.266, 0.27], [1.101, 0.27], [1.101, 0.5], [0.96, 0.5]]
+line_trace_manual = [
+    [0.3, -3],
+    [2.704, -3],
+    [2.704, -1.94],
+    [2.243, -1.94],
+    [2.243, -0.93],
+    [1.577, -0.93],
+    [1.577, -0.16],
+    [1.266, -0.16],
+    [1.266, 0.27],
+    [1.101, 0.27],
+    [1.101, 0.5],
+    [0.96, 0.5],
+]
 
 # ╔═╡ d1cd6a46-dc5b-4188-a891-703b50bce186
 let
-	plot(first.(line_trace_manual), last.(line_trace_manual); seriestype=:scatterpath, xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:blue, markercolor=:magenta, ms=2, msw=0, label="")
-	plot!(; xlabel=L"w_0", ylabel=L"w_1")
+    plot(
+        first.(line_trace_manual),
+        last.(line_trace_manual);
+        seriestype=:scatterpath,
+        xlims=(-4.1, 4.1),
+        ylims=(-3.1, 2.1),
+        color=:blue,
+        markercolor=:magenta,
+        ms=2,
+        msw=0,
+        label="",
+    )
+    plot!(; xlabel=L"w_0", ylabel=L"w_1")
 end
 
 # ╔═╡ 7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
@@ -220,7 +258,14 @@ thresh_input = @bind thresh Slider(-4:0.01:4; default=0, show_value=true);
 md"threshold = $thresh_input"
 
 # ╔═╡ dfebe8a3-fbe5-4381-bce5-1cd403a7b365
-plot([atan tanh logistic]; layout=(2, 2), legend=false, title=[L"\arctan(x)" L"\tanh(x)" L"\mathrm{logistic}(x)"], xlabel=L"x", ylabel=L"y")
+plot(
+    [atan tanh logistic];
+    layout=(2, 2),
+    legend=false,
+    title=[L"\arctan(x)" L"\tanh(x)" L"\mathrm{logistic}(x)"],
+    xlabel=L"x",
+    ylabel=L"y",
+)
 
 # ╔═╡ 5505fc32-1e46-4256-831c-d1b94d1e946c
 md"""
@@ -563,7 +608,7 @@ function plot_data!(
     f_draws=nothing,
     show_residuals=false,
     data_color=:blue,
-	equation = nothing,
+    equation=nothing,
 )
     if show_residuals && f_hat !== nothing
         sticks!(p, x, y; fillrange=f_hat.(x), color=:red)
@@ -578,17 +623,17 @@ function plot_data!(
         end
     end
     if f_hat !== nothing
-		# hack to give the fit a white border
-		plot!(p, f_hat, xrange...; color=:white, lw=2.5, label="")
+        # hack to give the fit a white border
+        plot!(p, f_hat, xrange...; color=:white, lw=2.5, label="")
         plot!(p, f_hat, xrange...; color=:orange, lw=2, label="")
     end
-	if equation !== nothing
-		xmin, xmax = xlims(p)
-		ymin, ymax = ylims(p)
-		xmin = xmin + (xmax - xmin) * 0.01
-		ymax = ymax - (ymax - ymin) * 0.01
-		annotate!(p, [(xmin, ymax, (equation, :left, :top))])
-	end
+    if equation !== nothing
+        xmin, xmax = xlims(p)
+        ymin, ymax = ylims(p)
+        xmin = xmin + (xmax - xmin) * 0.01
+        ymax = ymax - (ymax - ymin) * 0.01
+        annotate!(p, [(xmin, ymax, (equation, :left, :top))])
+    end
     plot!(p; legend=false)
     return p
 end
@@ -635,15 +680,20 @@ loss_line = error(f_hat_line, x, y)
 
 # ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
 let
-	scatter([w0_2], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, msw=0, label="")
-	plot!(; title="\$ E = $(round(loss_line; digits=2)) \$", xlabel=L"w_0", ylabel=L"w_1")
+    scatter(
+        [w0_2], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, msw=0, label=""
+    )
+    plot!(; title="\$ E = $(round(loss_line; digits=2)) \$", xlabel=L"w_0", ylabel=L"w_1")
 end
 
 # ╔═╡ 942f314e-927b-4371-8c83-83801c860b4d
 line_trace = let
     obj(w) = error(x -> w[1] + w[2] * x, x, y)
     winit = [0.3, -3.0]
-    optimizer = Optim.GradientDescent(; alphaguess=Optim.LineSearches.InitialStatic(; alpha=0.02), linesearch=Optim.LineSearches.Static())
+    optimizer = Optim.GradientDescent(;
+        alphaguess=Optim.LineSearches.InitialStatic(; alpha=0.02),
+        linesearch=Optim.LineSearches.Static(),
+    )
     options = Optim.Options(; store_trace=true, extended_trace=true)
     res = Optim.optimize(obj, winit, optimizer, options)
     wtrace = Optim.x_trace(res)
@@ -652,10 +702,45 @@ end
 # ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db
 let
     obj(w) = error(x -> w[1] + w[2] * x, x, y)
-	p = plot(first.(line_trace_manual), last.(line_trace_manual); seriestype=:scatterpath, ms=2, msw=0, color=:blue, markercolor=:magenta, label="human")
-    plot!(p, first.(line_trace), last.(line_trace); seriestype=:scatterpath, ms=2, msw=0, markercolor=:orange, color=:red, label="computer")
-	contour!(p, -5:0.01:5, -4:0.01:4, (w0, w1) -> obj([w0, w1]); levels=100, alpha=show_contour, color=:grey, colorbar=false)
-    plot!(p; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), aspect_ratio=1, xlabel=L"w_0", ylabel=L"w_1")
+    p = plot(
+        first.(line_trace_manual),
+        last.(line_trace_manual);
+        seriestype=:scatterpath,
+        ms=2,
+        msw=0,
+        color=:blue,
+        markercolor=:magenta,
+        label="human",
+    )
+    plot!(
+        p,
+        first.(line_trace),
+        last.(line_trace);
+        seriestype=:scatterpath,
+        ms=2,
+        msw=0,
+        markercolor=:orange,
+        color=:red,
+        label="computer",
+    )
+    contour!(
+        p,
+        -5:0.01:5,
+        -4:0.01:4,
+        (w0, w1) -> obj([w0, w1]);
+        levels=100,
+        alpha=show_contour,
+        color=:grey,
+        colorbar=false,
+    )
+    plot!(
+        p;
+        xlims=(-4.1, 4.1),
+        ylims=(-3.1, 2.1),
+        aspect_ratio=1,
+        xlabel=L"w_0",
+        ylabel=L"w_1",
+    )
 end
 
 # ╔═╡ 5def5552-fc0e-4e44-bed2-49edd810c75a
@@ -669,13 +754,13 @@ ymore = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_seed))
 
 # ╔═╡ 09877b51-c34c-4351-ab8d-0fbee76d5a1b
 let
-	ythresh = ymore .> thresh
-	data_color = ifelse.(ythresh, :blue, :magenta)
-	p = plot_data(xmore, ymore; data_color)
-	hline!(p, [thresh]; color=:black)
-	p2 = plot_data(xmore, ythresh; data_color)
-	plot!(p2; ylabel=L"y > \mathrm{thresh}")
-	plot(p, p2; link=:x, layout=(2, 1))
+    ythresh = ymore .> thresh
+    data_color = ifelse.(ythresh, :blue, :magenta)
+    p = plot_data(xmore, ymore; data_color)
+    hline!(p, [thresh]; color=:black)
+    p2 = plot_data(xmore, ythresh; data_color)
+    plot!(p2; ylabel=L"y > \mathrm{thresh}")
+    plot(p, p2; link=:x, layout=(2, 1))
 end
 
 # ╔═╡ f6f3c9b7-dd9d-4f7b-9626-93534c15f199
@@ -719,27 +804,27 @@ begin
         return m
     end
 
-	function as_latex(m::PolyModel; varname=:x, fname="\\hat{f}", digits=2)
-		w = round.(m.w; digits)
-		mapprox = PolyModel(w, round(m.λ; digits))
-		var = Sym{Real}(varname)
-		return L"%$fname(x) = %$(latexify(mapprox(var); env=:raw))"
-	end
+    function as_latex(m::PolyModel; varname=:x, fname="\\hat{f}", digits=2)
+        w = round.(m.w; digits)
+        mapprox = PolyModel(w, round(m.λ; digits))
+        var = Sym{Real}(varname)
+        return L"%$fname(x) = %$(latexify(mapprox(var); env=:raw))"
+    end
 end;
 
 # ╔═╡ 288aa7d7-8785-4f55-95e6-409e2ceb203a
 let
     f_hat(x) = w0
     loss = round(error(f_hat, x, y); digits=2)
-	equation = as_latex(PolyModel([w0]); digits=3)
+    equation = as_latex(PolyModel([w0]); digits=3)
     p = plot_data(x, y; f_hat, show_residuals=true, equation)
     plot!(p; title="\$ E= $loss \$")
 end
 
 # ╔═╡ 345ae96b-92c2-4ac4-bfdf-302113627ffb
 let
-	equation = as_latex(PolyModel([w0_2, w1]); digits=3)
-	p = plot_data(x, y; f_hat=f_hat_line, show_residuals=true, equation)
+    equation = as_latex(PolyModel([w0_2, w1]); digits=3)
+    p = plot_data(x, y; f_hat=f_hat_line, show_residuals=true, equation)
     plot!(p; title="\$ E= $(round(loss_line; digits=2)) \$")
 end
 
@@ -749,7 +834,7 @@ f_hat_poly = fit!(PolyModel(max_order), x, y)
 # ╔═╡ fc64996f-54ba-4c7a-8cfb-21133cec1fbe
 let
     err = round(error(f_hat_poly, x, y); digits=2)
-	equation = as_latex(f_hat_poly)
+    equation = as_latex(f_hat_poly)
     p = plot_data(x, y; f_hat=x -> f_hat_poly(x), show_residuals=true, equation)
     plot!(p; title="\$E = $err \$")
 end
@@ -786,7 +871,14 @@ let
         ms=6,
         label="",
     )
-    plot!(p2; legend=:topright, xlabel=L"n", ylabel=L"E_\mathrm{RMS}", ylims=(-0.1, 1.1), xlims=(-0.5, max(max_order, 10.5)))
+    plot!(
+        p2;
+        legend=:topright,
+        xlabel=L"n",
+        ylabel=L"E_\mathrm{RMS}",
+        ylims=(-0.1, 1.1),
+        xlims=(-0.5, max(max_order, 10.5)),
+    )
     plot(p, p2)
 end
 
@@ -860,34 +952,50 @@ end
 
 # ╔═╡ 72d2840e-cb8c-4df1-a006-105ef6a2aa55
 function weights_array(chns)
-	warrs = get(chns, :w).w
-	if warrs isa Tuple
-		arr = permutedims(cat(warrs...; dims=3), (3, 2, 1))
-	else
-		arr = permutedims(reshape(warrs, size(warrs)..., 1), (3, 2, 1))
-	end
-	mat = reshape(arr, size(arr, 1), :)
-	return mat
+    warrs = get(chns, :w).w
+    if warrs isa Tuple
+        arr = permutedims(cat(warrs...; dims=3), (3, 2, 1))
+    else
+        arr = permutedims(reshape(warrs, size(warrs)..., 1), (3, 2, 1))
+    end
+    mat = reshape(arr, size(arr, 1), :)
+    return mat
 end
 
 # ╔═╡ e34871ee-76eb-4572-808d-7d857e1cd0bc
 weight_draws = let
-	rng = MersenneTwister(73)
-	map([0, 1, 3, 9]) do max_order
-		mod = poly_regress_bayes(x, y, max_order)
-		max_order => weights_array(sample(rng, mod, NUTS(), 500))
-	end
+    rng = MersenneTwister(73)
+    map([0, 1, 3, 9]) do max_order
+        mod = poly_regress_bayes(x, y, max_order)
+        max_order => weights_array(sample(rng, mod, NUTS(), 500))
+    end
 end;
 
 # ╔═╡ d462dc39-f90b-4429-b6b5-7ded05fa3432
 let
-	w = Dict(weight_draws)[1]
-	obj(w) = error(PolyModel(w), x, y)
-	p = scatter(w[1, :], w[2, :]; color=:orange, alpha=0.25, ms=3, msw=0)
-	contour!(p, -5:0.01:5, -4:0.01:4, (w0, w1) -> obj([w0, w1]); levels=100, color=:grey, colorbar=false)
-	f_hat = fit!(PolyModel(1), x, y)
-	scatter!(p, [f_hat.w[1]], [f_hat.w[2]]; color=:orange, markerstrokecolor=:white, ms=4)
-    plot!(p; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), aspect_ratio=1, xlabel=L"w_0", ylabel=L"w_1", legend=false)
+    w = Dict(weight_draws)[1]
+    obj(w) = error(PolyModel(w), x, y)
+    p = scatter(w[1, :], w[2, :]; color=:orange, alpha=0.25, ms=3, msw=0)
+    contour!(
+        p,
+        -5:0.01:5,
+        -4:0.01:4,
+        (w0, w1) -> obj([w0, w1]);
+        levels=100,
+        color=:grey,
+        colorbar=false,
+    )
+    f_hat = fit!(PolyModel(1), x, y)
+    scatter!(p, [f_hat.w[1]], [f_hat.w[2]]; color=:orange, markerstrokecolor=:white, ms=4)
+    plot!(
+        p;
+        xlims=(-4.1, 4.1),
+        ylims=(-3.1, 2.1),
+        aspect_ratio=1,
+        xlabel=L"w_0",
+        ylabel=L"w_1",
+        legend=false,
+    )
 end
 
 # ╔═╡ 8ea2e159-ef17-4ddd-b5a7-5f6c8d67238a
@@ -933,13 +1041,13 @@ f_hat_g(x, w) = dot(w, compute_features(g, x))
 # ╔═╡ 34bad558-e70f-4d46-a9ab-7acc6c89db7a
 let
     w = solve_regression(compute_features(g, x), y)
-	wround = round.(w; digits=2)
+    wround = round.(w; digits=2)
     f_hat(x) = sum(dot(w, compute_features(g, x)))
-	f_hat_sym(x) = sum(wround .* compute_features(g, x))
+    f_hat_sym(x) = sum(wround .* compute_features(g, x))
     err = round(error(f_hat, x, y); digits=2)
     p = plot_data(x, y; f_hat, show_residuals=true)
-	lex = latexify(f_hat_sym(Sym{Real}(:x)); env=:raw)
-	annotate!(p, [(minimum(x), maximum(y), ("\$\\hat{f}(x)=$lex\$", :left, :top))])
+    lex = latexify(f_hat_sym(Sym{Real}(:x)); env=:raw)
+    annotate!(p, [(minimum(x), maximum(y), ("\$\\hat{f}(x)=$lex\$", :left, :top))])
     plot!(p; title="\$E = $err \$")
 end
 
