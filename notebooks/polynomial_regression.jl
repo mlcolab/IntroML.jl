@@ -7,14 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try
-            Base.loaded_modules[Base.PkgId(
-                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
-                "AbstractPlutoDingetjes",
-            )].Bonds.initial_value
-        catch
-            b -> missing
-        end
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -37,8 +30,8 @@ begin
     using Latexify
 end
 
-# ╔═╡ 4004013d-6fd6-4e8c-a218-745cb33efef4
-html"<button onclick='present()'>Presentation Mode</button>"
+# ╔═╡ bdd7422f-e733-4d2f-851b-be7b355b5088
+html"<button onclick='present()'>Presentation Mode</button><br>"
 
 # ╔═╡ 2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
 md"""
@@ -160,7 +153,7 @@ Show loss contour: $show_contour_input
 """
 
 # ╔═╡ 876fa74c-9c30-4f0b-9a5b-82bb6597cd47
-g = [zero]
+g = [one, identity, sin, exp]
 
 # ╔═╡ 06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
 md"""
@@ -267,16 +260,24 @@ plot(
     ylabel=L"y",
 )
 
-# ╔═╡ 5505fc32-1e46-4256-831c-d1b94d1e946c
+# ╔═╡ 7e69ae50-fcbd-4b69-9ad6-13ca451d9982
 md"""
-## Nesting functions for model expansion
+## A quick $(html"<s>costume</s>") notation change!
 
-To recap, we've seen 3 strategies for model expansion:
-1. Applying a function to the inputs
-2. Applying a function to the outputs
-3. Doing both at the same time
+We've been writing our functions as operating on a single data point ``x_i`` at a time with a weighted sum.
+A more convenient notation is to operate on the entire dataset ``x`` and replace the sum with a matrix multiplication:
 
-We've so far used all of the weights in the middle, but why not apply some weights, then a function, then apply more weights?
+```math
+\hat{f}(x; w) = w^\top g(x) = \sum_{j=0}^n w_j g_j(x)
+```
+
+Just like ``\hat{f}`` is now data-wise, so is ``g_j``.
+In our applications so far, ``w`` has been a vector, but if our output is not 1-dimensional, ``w`` could be a matrix.
+Lastly, when we apply a sigmoid ``\sigma`` to an array, we assume it's applied to each individual element:
+
+```math
+\sigma(z) = \begin{pmatrix}\sigma(z_1) \\ \sigma(z_2) \\ \vdots \end{pmatrix}
+```
 """
 
 # ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
@@ -387,7 +388,7 @@ md"""
 For a better fit, let's give the line not only an intercept ``w_0`` but also also a slope ``w_1``:
 
 ````math
-\hat{f}(x_i) = w_0 + w_1 x_i
+\hat{f}(x_i; w) = w_0 + w_1 x_i
 ````
 
 This model now has two degrees of freedom, which we can arrange in a $(important("weight")) vector ``w = \begin{pmatrix}w_0 \\ w_1\end{pmatrix}``.
@@ -428,7 +429,7 @@ To do this, we need to choose a different form for ``\hat{f}``.
 A very useful form we can take is as the weighted sum of simpler functions ``g_j``:
 
 ```math
-\hat{f}(y_i) = \sum_{j=1}^n w_j g_j(x_i).
+\hat{f}(x_i; w) = \sum_{j=1}^n w_j g_j(x_i).
 ```
 
 Remember that we called ``x_i`` a raw feature.
@@ -449,7 +450,7 @@ One way we can systematically scale the model is by choosing as many computed fe
 For example, we can let ``g_j(x) = x^j``, so that
 
 ```math
-\hat{f}(x_i) = w_0 + w_1 x_1 + w_2 x^2 \ldots w_n x^n = \sum_{j=0}^n w_j x_i^j
+\hat{f}(x_i; w) = w_0 + w_1 x_1 + w_2 x^2 \ldots w_n x^n = \sum_{j=0}^n w_j x_i^j
 ```
 
 Functions of the form of ``f`` are called $(important("polynomials")), and any smooth function can be exactly computed with infinite terms (i.e. ``n \to \infty``) or approximated with finite terms (by picking some manageable ``n``).
@@ -541,13 +542,13 @@ We've already seen one way: by applying a function to the raw features ``x`` to 
 
 For example, if we choose the sine and cosine functions of increasing frequency as our computed features, then the model is automatically periodic:
 ```math
-\hat{f}(x_i) = w_0 + \sum_{j=1}^n w_j\cos(j x_i) + w_{j+1} \sin(j x_i)
+\hat{f}(x_i; w) = w_0 + \sum_{j=1}^n w_j\cos(j x_i) + w_{j+1} \sin(j x_i)
 ```
 This series is called a Fourier series.
 
 Another way we can encode an inductive bias is by applying a function ``\phi`` to the output of the model
 ```math
-\hat{f}(x_i) = \phi\left(\sum_{j=1}^n w_j g_j(x_i)\right),
+\hat{f}(x_i; w) = \phi\left(\sum_{j=1}^n w_j g_j(x_i)\right),
 ```
 where ``\phi`` smoothly maps from the entire real line to some subset of the real numbers.
 """
@@ -577,6 +578,26 @@ While we could use the same sum-of-squares loss on this function, it turns out t
 E(w) = -\sum_{i=1}^k y_i \log \hat{f}(x_i; w) + (1 - y_i) \log (1 - \hat{f}(x_i; w))
 ````
 
+"""
+
+# ╔═╡ 5505fc32-1e46-4256-831c-d1b94d1e946c
+md"""
+## Nesting functions for model expansion
+
+To recap, we've seen 3 strategies for model expansion:
+1. Applying a function to the inputs
+2. Applying a function to the outputs
+3. Doing both at the same time
+
+We've so far used all of the weights in the middle, but why not apply some weights, then a function, then apply more weights?
+That is, why not have two matrices of weights ``W_1`` and ``W_2``:
+
+```math
+\hat{f}(x; W_1, W_2) = \sigma(W_2^\top \sigma(W_1^\top g(x))).
+```
+
+It turns out that alternating application of linear operators (i.e. weighting and adding) and $(important("activation")) functions like our sigmoid is incredibly expressive.
+These are called $(important("neural networks")).
 """
 
 # ╔═╡ d8983a9d-1880-4dc4-9c17-23281767e0c2
@@ -2779,7 +2800,7 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╟─4004013d-6fd6-4e8c-a218-745cb33efef4
+# ╟─bdd7422f-e733-4d2f-851b-be7b355b5088
 # ╟─2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
 # ╟─18198312-54c3-4b4f-b865-3a6a775ce483
 # ╠═1b4812d4-3879-4a79-a95d-20cad2959f5c
@@ -2856,6 +2877,7 @@ version = "0.9.1+5"
 # ╟─ba59678b-1606-4132-9f19-0dae1e660195
 # ╠═dfebe8a3-fbe5-4381-bce5-1cd403a7b365
 # ╟─b53798f9-24c2-4def-ab6f-447a5d809865
+# ╟─7e69ae50-fcbd-4b69-9ad6-13ca451d9982
 # ╟─5505fc32-1e46-4256-831c-d1b94d1e946c
 # ╟─d2e5bde1-8c65-494f-8944-b16dec6ab193
 # ╟─ea518070-cc7d-4a33-b9fd-082f7f1aeca1
