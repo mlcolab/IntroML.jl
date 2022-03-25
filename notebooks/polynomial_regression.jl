@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -788,9 +795,9 @@ begin
         return L"%$fname(x) = %$(latexify(simplify(mapprox(var)); env=:raw))"
     end
 
-	function Base.show(io::IO, mime::MIME"text/latex", m::PolyModel)
-		return show(io, mime, as_latex(m))
-	end
+    function Base.show(io::IO, mime::MIME"text/latex", m::PolyModel)
+        return show(io, mime, as_latex(m))
+    end
 end;
 
 # ╔═╡ 288aa7d7-8785-4f55-95e6-409e2ceb203a
@@ -945,43 +952,43 @@ end
     σw=sqrt(inv(λ)) * σ, # convert regularization to standard deviation
     wprior=iszero(λ) ? Flat() : Normal(0, σw),
     p=0:max_order,
-	n=length(x),
+    n=length(x),
     features=x .^ p',
-	Q = Matrix(qr(features).Q) * sqrt(n - 1),
-	Rinv = inv(qr(features).R / sqrt(n - 1)),
+    Q=Matrix(qr(features).Q) * sqrt(n - 1),
+    Rinv=inv(qr(features).R / sqrt(n - 1)),
 )
     w_tilde ~ filldist(wprior, max_order + 1)
-	μ = Q * w_tilde
+    μ = Q * w_tilde
     y .~ Normal.(μ, σ)
-	return (; w = Rinv * w_tilde)
+    return (; w=Rinv * w_tilde)
 end
 
 # ╔═╡ 0a06b151-461a-470b-927b-851c64d826bf
 function draw_samples(m::PolyModel, x, y, ndraws; rng=Random.GLOBAL_RNG, sampler=NUTS())
-	mod = poly_regress_bayes(x, y, length(m.w) - 1; λ=m.λ)
-	chns = sample(mod, sampler, ndraws)
-	params = MCMCChains.get_sections(chns, :parameters)
-	weights = generated_quantities(mod, params)
-	polys = map(vec(weights)) do nt
-		return PolyModel(nt.w, m.λ)
-	end
-	return polys
+    mod = poly_regress_bayes(x, y, length(m.w) - 1; λ=m.λ)
+    chns = sample(mod, sampler, ndraws)
+    params = MCMCChains.get_sections(chns, :parameters)
+    weights = generated_quantities(mod, params)
+    polys = map(vec(weights)) do nt
+        return PolyModel(nt.w, m.λ)
+    end
+    return polys
 end
 
 # ╔═╡ 95f3bbad-1309-40c5-9da2-e1255a325d8b
 poly_draws = let
-	rng = MersenneTwister(20)
-	map([0, 1, 3, 9]) do max_order
-		max_order => draw_samples(PolyModel(max_order), x, y, 100; rng)
-	end
+    rng = MersenneTwister(20)
+    map([0, 1, 3, 9]) do max_order
+        max_order => draw_samples(PolyModel(max_order), x, y, 100; rng)
+    end
 end
 
 # ╔═╡ d462dc39-f90b-4429-b6b5-7ded05fa3432
 let
     draws = Dict(poly_draws)[1]
     obj(w) = error(PolyModel(w), x, y)
-	w1 = [m.w[1] for m in draws]
-	w2 = [m.w[2] for m in draws]
+    w1 = [m.w[1] for m in draws]
+    w2 = [m.w[2] for m in draws]
     p = scatter(w1, w2; color=:orange, alpha=0.25, ms=3, msw=0)
     contour!(
         p,
