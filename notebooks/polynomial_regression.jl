@@ -121,20 +121,28 @@ line_trace_manual = [
 
 # ╔═╡ d1cd6a46-dc5b-4188-a891-703b50bce186
 let
-    plot(
-        first.(line_trace_manual),
-        last.(line_trace_manual);
-        seriestype=:scatterpath,
-        xlims=(-4.1, 4.1),
-        ylims=(-3.1, 2.1),
-        color=:blue,
-        markercolor=:magenta,
-        ms=2,
-        msw=0,
+    p = plot(; size=(550, 500))
+    plot!(p, first.(line_trace_manual), last.(line_trace_manual); color=:blue, label="")
+    scatter!(
+        p,
+        Base.vect.(line_trace_manual[begin])...;
+        color=:black,
+        marker=:rtriangle,
+        ms=6,
         label="",
     )
-    plot!(; xlabel=L"w_0", ylabel=L"w_1")
+    plot!(
+        p;
+        xlims=(-2.1, 4.1),
+        ylims=(-3.1, 2.1),
+        aspect_ratio=1,
+        xlabel=L"w_0",
+        ylabel=L"w_1",
+    )
 end
+
+# ╔═╡ dea5bba1-54a6-45a3-b155-de295aecd307
+Base.vect.(line_trace_manual[1])
 
 # ╔═╡ 7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
 md"""
@@ -683,50 +691,6 @@ line_trace = let
     wtrace = Optim.x_trace(res)
 end
 
-# ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db
-let
-    obj(w) = error(x -> w[1] + w[2] * x, x, y)
-    p = plot(
-        first.(line_trace_manual),
-        last.(line_trace_manual);
-        seriestype=:scatterpath,
-        ms=2,
-        msw=0,
-        color=:blue,
-        markercolor=:magenta,
-        label="human",
-    )
-    plot!(
-        p,
-        first.(line_trace),
-        last.(line_trace);
-        seriestype=:scatterpath,
-        ms=2,
-        msw=0,
-        markercolor=:orange,
-        color=:red,
-        label="computer",
-    )
-    contour!(
-        p,
-        -5:0.01:5,
-        -4:0.01:4,
-        (w0, w1) -> obj([w0, w1]);
-        levels=100,
-        alpha=show_contour,
-        color=:grey,
-        colorbar=false,
-    )
-    plot!(
-        p;
-        xlims=(-4.1, 4.1),
-        ylims=(-3.1, 2.1),
-        aspect_ratio=1,
-        xlabel=L"w_0",
-        ylabel=L"w_1",
-    )
-end
-
 # ╔═╡ 5def5552-fc0e-4e44-bed2-49edd810c75a
 ytest = generate_data(f, x, error_actual; rng=MersenneTwister(data_test_seed))
 
@@ -814,6 +778,54 @@ let
     equation = as_latex(PolyModel([w0_2, w1]); digits=3)
     p = plot_data(x, y; f_hat=f_hat_line, show_residuals=true, equation)
     plot!(p; title="\$ E= $(round(loss_line; digits=2)) \$")
+end
+
+# ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db
+let
+    obj(w) = error(x -> w[1] + w[2] * x, x, y)
+    p = plot(; size=(550, 500))
+    plot!(
+        p,
+        first.(line_trace),
+        last.(line_trace);
+        seriestype=:scatterpath,
+        ms=2,
+        msw=0,
+        markercolor=:orange,
+        color=:red,
+        label="computer",
+    )
+    plot!(
+        p, first.(line_trace_manual), last.(line_trace_manual); color=:blue, label="human"
+    )
+    contour!(
+        p,
+        -2.1:0.01:4.1,
+        -3.1:0.01:2.1,
+        (w0, w1) -> obj([w0, w1]);
+        levels=100,
+        alpha=show_contour * 0.5,
+        color=:greys,
+        colorbar=false,
+    )
+    scatter!(
+        p,
+        Base.vect.(line_trace_manual[begin])...;
+        color=:black,
+        marker=:rtriangle,
+        ms=6,
+        label="",
+    )
+    w = fit!(PolyModel(1), x, y).w
+    scatter!(p, [w[1]], [w[2]]; color=:black, marker=:square, ms=4, label="")
+    plot!(
+        p;
+        xlims=(-2.1, 4.1),
+        ylims=(-3.1, 2.1),
+        aspect_ratio=1,
+        xlabel=L"w_0",
+        ylabel=L"w_1",
+    )
 end
 
 # ╔═╡ 3b7fe147-ea94-422f-a943-6f3bd577edf1
@@ -2808,6 +2820,7 @@ version = "0.9.1+5"
 # ╟─def60ead-a40b-4376-82cd-a77455f6b942
 # ╠═67486053-5971-406b-8680-0d80803d797a
 # ╠═d1cd6a46-dc5b-4188-a891-703b50bce186
+# ╠═dea5bba1-54a6-45a3-b155-de295aecd307
 # ╟─7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
 # ╠═942f314e-927b-4371-8c83-83801c860b4d
 # ╟─223cefe4-1ead-4325-af32-2d59504e466b
