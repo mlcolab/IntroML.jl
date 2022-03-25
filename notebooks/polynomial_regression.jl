@@ -7,14 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try
-            Base.loaded_modules[Base.PkgId(
-                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
-                "AbstractPlutoDingetjes",
-            )].Bonds.initial_value
-        catch
-            b -> missing
-        end
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -210,22 +203,6 @@ That is, ``\lambda`` is one way to incorporate prior information (i.e. domain ex
 
 Wouldn't it be nice if there was a principled way to do that?
 """
-
-# ╔═╡ 7e532caa-b8a5-43ab-af4a-4590ffd1a9dc
-@model function poly_regress_bayes(
-    x,
-    y,
-    max_order;
-    σ=0.2,
-    λ=0,
-    σw=sqrt(inv(λ)) * σ, # convert regularization to standard deviation
-    wprior=iszero(λ) ? Flat() : Normal(0, σw),
-    p=0:max_order,
-    features=x .^ p',
-)
-    w ~ filldist(wprior, max_order + 1)
-    return y .~ Normal.(features * w, σ)
-end
 
 # ╔═╡ a1671960-9b0b-47f2-8d3a-74d67a122ce0
 md"""
@@ -808,8 +785,12 @@ begin
         w = round.(m.w; digits)
         mapprox = PolyModel(w, round(m.λ; digits))
         var = Sym{Real}(varname)
-        return L"%$fname(x) = %$(latexify(mapprox(var); env=:raw))"
+        return L"%$fname(x) = %$(latexify(simplify(mapprox(var)); env=:raw))"
     end
+
+	function Base.show(io::IO, mime::MIME"text/latex", m::PolyModel)
+		return show(io, mime, as_latex(m))
+	end
 end;
 
 # ╔═╡ 288aa7d7-8785-4f55-95e6-409e2ceb203a
@@ -950,32 +931,58 @@ let
     plot(p, p2)
 end
 
-# ╔═╡ 72d2840e-cb8c-4df1-a006-105ef6a2aa55
-function weights_array(chns)
-    warrs = get(chns, :w).w
-    if warrs isa Tuple
-        arr = permutedims(cat(warrs...; dims=3), (3, 2, 1))
-    else
-        arr = permutedims(reshape(warrs, size(warrs)..., 1), (3, 2, 1))
-    end
-    mat = reshape(arr, size(arr, 1), :)
-    return mat
+# ╔═╡ 86e58e39-186e-470f-832a-32cd86717daa
+# for computational reasons, we use the QR parameterization of the regression model
+# and specify the priors on the transformed coefficients. For λ=0, this has the same
+# MAP solution as the original parameterization, but for λ>0, the MAP solution is
+# different.
+@model function poly_regress_bayes(
+    x,
+    y,
+    max_order;
+    σ=0.2,
+    λ=0,
+    σw=sqrt(inv(λ)) * σ, # convert regularization to standard deviation
+    wprior=iszero(λ) ? Flat() : Normal(0, σw),
+    p=0:max_order,
+	n=length(x),
+    features=x .^ p',
+	Q = Matrix(qr(features).Q) * sqrt(n - 1),
+	Rinv = inv(qr(features).R / sqrt(n - 1)),
+)
+    w_tilde ~ filldist(wprior, max_order + 1)
+	μ = Q * w_tilde
+    y .~ Normal.(μ, σ)
+	return (; w = Rinv * w_tilde)
 end
 
-# ╔═╡ e34871ee-76eb-4572-808d-7d857e1cd0bc
-weight_draws = let
-    rng = MersenneTwister(73)
-    map([0, 1, 3, 9]) do max_order
-        mod = poly_regress_bayes(x, y, max_order)
-        max_order => weights_array(sample(rng, mod, NUTS(), 500))
-    end
-end;
+# ╔═╡ 0a06b151-461a-470b-927b-851c64d826bf
+function draw_samples(m::PolyModel, x, y, ndraws; rng=Random.GLOBAL_RNG, sampler=NUTS())
+	mod = poly_regress_bayes(x, y, length(m.w) - 1; λ=m.λ)
+	chns = sample(mod, sampler, ndraws)
+	params = MCMCChains.get_sections(chns, :parameters)
+	weights = generated_quantities(mod, params)
+	polys = map(vec(weights)) do nt
+		return PolyModel(nt.w, m.λ)
+	end
+	return polys
+end
+
+# ╔═╡ 95f3bbad-1309-40c5-9da2-e1255a325d8b
+poly_draws = let
+	rng = MersenneTwister(20)
+	map([0, 1, 3, 9]) do max_order
+		max_order => draw_samples(PolyModel(max_order), x, y, 100; rng)
+	end
+end
 
 # ╔═╡ d462dc39-f90b-4429-b6b5-7ded05fa3432
 let
-    w = Dict(weight_draws)[1]
+    draws = Dict(poly_draws)[1]
     obj(w) = error(PolyModel(w), x, y)
-    p = scatter(w[1, :], w[2, :]; color=:orange, alpha=0.25, ms=3, msw=0)
+	w1 = [m.w[1] for m in draws]
+	w2 = [m.w[2] for m in draws]
+    p = scatter(w1, w2; color=:orange, alpha=0.25, ms=3, msw=0)
     contour!(
         p,
         -5:0.01:5,
@@ -1000,25 +1007,15 @@ end
 
 # ╔═╡ 8ea2e159-ef17-4ddd-b5a7-5f6c8d67238a
 let
-    plots = map(weight_draws) do (max_order, ws)
+    plots = map(poly_draws) do (max_order, polys)
         mod = poly_regress_bayes(x, y, max_order)
-        f_draws = map(rand(axes(ws, 2), 20)) do i
-            f = PolyModel(ws[:, i])
-            return x -> f(x)
-        end
-        f_hat = PolyModel(optimize(mod, MAP()).values.array)
+        f_draws = map(m -> (x -> m(x)), rand(polys, 20))
+        f_hat = fit!(PolyModel(max_order), x, y)
         p = plot_data(x, ytest; f_draws, f_hat=x -> f_hat(x), data_color=:magenta)
         plot!(p; title="\$n=$max_order\$")
         p
     end
     plot(plots...; layout=(2, 2), link=:both)
-end
-
-# ╔═╡ 35e70aa4-7b87-4730-8e05-f39d29c20a9e
-function rand_weights(chns, n=10; rng=Random.GLOBAL_RNG)
-    wdraws = weights_array(chns)
-    inds = rand(rng, axes(wdraws, 2), n)
-    return [wdraws[:, i] for i in inds]
 end
 
 # ╔═╡ 4748a526-8d2e-43a6-8f30-82abf238d624
@@ -2839,11 +2836,10 @@ version = "0.9.1+5"
 # ╠═645525f1-77cb-4b18-81df-3eafc0b4004e
 # ╟─a2466cba-65ea-41a4-b222-c397614453b2
 # ╟─73444608-d0de-440d-8be3-5a02dadcadc7
-# ╠═7e532caa-b8a5-43ab-af4a-4590ffd1a9dc
-# ╠═e34871ee-76eb-4572-808d-7d857e1cd0bc
+# ╠═95f3bbad-1309-40c5-9da2-e1255a325d8b
 # ╠═d462dc39-f90b-4429-b6b5-7ded05fa3432
 # ╟─a1671960-9b0b-47f2-8d3a-74d67a122ce0
-# ╟─8ea2e159-ef17-4ddd-b5a7-5f6c8d67238a
+# ╠═8ea2e159-ef17-4ddd-b5a7-5f6c8d67238a
 # ╟─b0773555-44ac-4b06-a410-d25ee1f42399
 # ╟─df8f0019-84b9-4309-ab16-4a909fa94e88
 # ╠═2909ff18-e98b-4149-843f-1c4709cfbb37
@@ -2889,8 +2885,8 @@ version = "0.9.1+5"
 # ╠═bddafce9-30e4-4708-96ae-938bff9edfe7
 # ╠═ebb0c754-12f1-4f80-a5f6-98a61b915fa6
 # ╠═a5fe54fb-4f92-4a35-8038-8d36a4aa065c
-# ╠═35e70aa4-7b87-4730-8e05-f39d29c20a9e
-# ╠═72d2840e-cb8c-4df1-a006-105ef6a2aa55
+# ╠═86e58e39-186e-470f-832a-32cd86717daa
+# ╠═0a06b151-461a-470b-927b-851c64d826bf
 # ╠═4748a526-8d2e-43a6-8f30-82abf238d624
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
