@@ -27,7 +27,7 @@ begin
         Optim,
         LogExpFunctions
     using Turing: Flat
-    using Symbolics: Sym, @variables, simplify, expand
+    using Symbolics
     using Latexify
 end
 
@@ -300,17 +300,6 @@ md"""
 ## Neural Networks
 """
 
-# ╔═╡ c10eafe5-e884-4de9-8e88-2bea9e0909b8
-md"""
-
-### The Perceptron
-
-The
-"""
-
-# ╔═╡ 7a41c4a4-b83a-4a34-a2c4-764fcd18daa1
-Flux.Losses.hinge_loss
-
 # ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
 md"""
 ### Fitting 1D data with neural networks
@@ -327,11 +316,66 @@ Now that we have a generic framework for constructing neural networks, we can do
 For example, when we have two-dimensional data, such as points on a plane, we have two features.
 
 #### The data
-
-
-
-#### The perceptron
 """
+
+# ╔═╡ 25daeeb2-1667-4ebf-993e-fc4d94a3e627
+@bind nhidden2 Slider(0:10; show_value=true)
+
+# ╔═╡ 2cf7fd33-2fda-4311-b699-c8441181b292
+@register_symbolic Flux.σ(x)
+
+# ╔═╡ 805d2824-86cc-45bd-88b0-e6e14d9fde48
+f2(x, y) = sinpi(2x) * sinpi(2y)
+
+# ╔═╡ 10b73d22-cf2a-479c-84b6-6a63a694f398
+x2, c2 = let
+	rng = MersenneTwister(92)
+	x = rand(rng, 400, 2)
+	z = f2.(x[:, 1], x[:, 2]) .+ randn.(rng) .* 0.1
+	c = Int.(z .> 0)
+	x, c
+end;
+
+# ╔═╡ 82a245fa-6e02-41f4-bba4-769863a896db
+DataFrame(
+	"x[1]" => round.(x2[:, 1]; digits=2),
+	"x[2]" => round.(x2[:, 2]; digits=2),
+	"c" => c2,
+)
+
+# ╔═╡ dda5a074-3f7b-46dd-bc4b-cb05117ec425
+let
+	scatter(x2[:, 1], x2[:, 2]; color=c2 .+ 1, legend=false, xlabel=L"x_1", ylabel=L"x_2", msw=0)
+end
+
+# ╔═╡ f52b2954-6edb-48cc-8dc9-94a4ef613012
+let
+	Random.seed!(28)
+	λ = 1e-6
+	data = [(x2', c2')]
+	if nhidden2 == 0
+		model = Dense(2, 1, Flux.σ)
+	else
+		model = Chain(
+			Dense(2, nhidden2, Flux.σ),  # x -> σ(x * W₁ + w₁₀)
+			Dense(nhidden2, 1, Flux.σ),  # z -> σ(z * W₂ + w₂₀)
+		)
+	end
+	w = Flux.params(model)
+	penalty() = sum(wi -> sum(abs2, wi), w) * λ
+	loss(x, y) = Flux.Losses.mse(model(x), y) + penalty()
+	opt = Flux.Optimise.ADAM()
+	for _ in 1:20_000
+		Flux.train!(loss, w, data, opt)
+	end
+	f_hat(x, y) = only(model([x, y]))
+	lex = latexify(f_hat(Symbolics.Sym{Float64}(:x_1), Symbolics.Sym{Float64}(:x_2)); fmt="%.2f", env=:raw)
+	equation = L"%$lex"
+	p = contourf(0:0.01:1, 0:0.01:1, f_hat, color=:coolwarm, linewidth=0)
+	scatter!(p, x2[:, 1], x2[:, 2]; color=c2.+1, label="")
+	annotate!(p, [(0, 1.06, (equation, :left, :top, 10))])
+	plot!(; xlabel=L"x_1", ylabel=L"x_2")
+end
 
 # ╔═╡ 5b237453-472f-414e-95e0-f44e980ea93a
 md"""
@@ -831,7 +875,7 @@ let
 		return -sum(c .* z .- log1pexp.(z))
 	end
 	w = zeros(max_order + 1)
-	sol = optimize(obj, zeros(max_order + 1), LBFGS())
+	sol = Optim.optimize(obj, zeros(max_order + 1), LBFGS())
 	w = Optim.minimizer(sol)
 	f_hat(x::Real) = logistic.(dot(x .^ (0:max_order), w))
 	p = plot_data(xmore, c; f_hat, data_color=Int.(c))
@@ -840,22 +884,24 @@ end
 
 # ╔═╡ 655c8b62-e180-41e6-a3b5-7317cdc76f73
 let
-	# TODO: seed
+	Random.seed!(32)
 	c = Int.(ymore .> 1.2)
 	data = [(xmore', c')]
 	model = Chain(
-		Dense(1, nhidden1, σ),  # x -> σ(x * W₁ + w₁₀)
-		Dense(nhidden1, 1, σ),  # z -> σ(z * W₂ + w₂₀)
+		Dense(1, nhidden1, Flux.σ),  # x -> σ(x * W₁ + w₁₀)
+		Dense(nhidden1, 1, Flux.σ),  # z -> σ(z * W₂ + w₂₀)
 	)
+	model(xmore')
+
 	w = Flux.params(model)
-	Flux.Losses
 	loss(x, y) = Flux.Losses.mse(model(x), y)
 	opt = Flux.Optimise.ADAM()
-	for _ in 1:100_000
+	for _ in 1:50_000
 		Flux.train!(loss, w, data, opt)
 	end
 	f_hat(x) = only(model(fill(x, 1, 1)))
-	plot_data(xmore, c; data_color = Int.(c), f_hat)
+	equation = latexify(f_hat(Symbolics.Sym{Real}(:x)); fmt="%.2f", env=:raw)
+	plot_data(xmore, c; data_color = Int.(c), f_hat, equation)
 end
 
 # ╔═╡ f6f3c9b7-dd9d-4f7b-9626-93534c15f199
@@ -911,7 +957,7 @@ begin
     function as_latex(m::PolyModel; varname=:x, fname="\\hat{f}", digits=2)
         w = round.(m.w; digits)
         mapprox = PolyModel(w, round(m.λ; digits))
-        var = Sym{Real}(varname)
+        var = Symbolics.Sym{Real}(varname)
         return L"%$fname(x) = %$(latexify(simplify(mapprox(var)); env=:raw))"
     end
 
@@ -1218,7 +1264,7 @@ let
     f_hat_sym(x) = sum(wround .* compute_features(g, x))
     err = round(error(f_hat, x, y); digits=2)
     p = plot_data(x, y; f_hat, show_residuals=true)
-    lex = latexify(f_hat_sym(Sym{Real}(:x)); env=:raw)
+    lex = latexify(f_hat_sym(Symbolics.Sym{Real}(:x)); env=:raw)
     annotate!(p, [(minimum(x), maximum(y), ("\$\\hat{f}(x)=$lex\$", :left, :top))])
     plot!(p; title="\$E = $err \$")
 end
@@ -3141,12 +3187,17 @@ version = "0.9.1+5"
 # ╠═29e817d4-4583-4c54-8ecc-53bc3fcd7d39
 # ╟─5505fc32-1e46-4256-831c-d1b94d1e946c
 # ╠═94a9846b-ff01-487d-aeac-ddd4ab81610c
-# ╠═c10eafe5-e884-4de9-8e88-2bea9e0909b8
-# ╠═7a41c4a4-b83a-4a34-a2c4-764fcd18daa1
 # ╠═d2e5bde1-8c65-494f-8944-b16dec6ab193
 # ╠═24ae3af6-c654-4cf3-b07c-1984e5ec414d
 # ╠═655c8b62-e180-41e6-a3b5-7317cdc76f73
-# ╠═ea518070-cc7d-4a33-b9fd-082f7f1aeca1
+# ╟─ea518070-cc7d-4a33-b9fd-082f7f1aeca1
+# ╠═82a245fa-6e02-41f4-bba4-769863a896db
+# ╠═dda5a074-3f7b-46dd-bc4b-cb05117ec425
+# ╠═25daeeb2-1667-4ebf-993e-fc4d94a3e627
+# ╠═f52b2954-6edb-48cc-8dc9-94a4ef613012
+# ╠═2cf7fd33-2fda-4311-b699-c8441181b292
+# ╠═805d2824-86cc-45bd-88b0-e6e14d9fde48
+# ╠═10b73d22-cf2a-479c-84b6-6a63a694f398
 # ╟─5b237453-472f-414e-95e0-f44e980ea93a
 # ╠═ef43aef6-80ec-4976-91e6-84a74d29a83e
 # ╠═f75ad936-8c06-4e00-92d7-1f86532c0072
