@@ -7,14 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try
-            Base.loaded_modules[Base.PkgId(
-                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
-                "AbstractPlutoDingetjes",
-            )].Bonds.initial_value
-        catch
-            b -> missing
-        end
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -27,6 +20,7 @@ begin
         Random,
         StatsPlots,
         LinearAlgebra,
+		Flux,
         Turing,
         LaTeXStrings,
         DataFrames,
@@ -47,39 +41,24 @@ md"""
 In this notebook, we slowly introduce supervised learning, along with basic machine learning concepts we encounter on the way.
 """
 
-# ╔═╡ cd49e0a5-4120-481a-965e-72e7bdaf867c
+# ╔═╡ 31b1a0e4-216f-4c90-b16e-f542000c8aee
 md"""
-## The proverbial straight line
-
-### The horizontal line
-
-The simplest model we could choose for ``f`` is a horizontal line:
-
-````math
-\hat{f}(x_i; w) = w_0
-````
-
-This model has one free parameter ``w_0``.
-Drag the slider below to adjust ``w_0``.
-Which fit is "best"?
+It's useful to explore our data by plotting.
 """
 
 # ╔═╡ 8eb34f0c-166b-4973-bdea-2ae64e3d34aa
 w0_slider = @bind w0 Slider(-5:0.001:5; default=0.3, show_value=true);
 
-# ╔═╡ 61238019-df77-4067-a9b4-0766d056e891
-md"``w_0 = `` $w0_slider"
-
 # ╔═╡ 0b719897-4515-46c3-830a-eaec4d1666a2
 md"""
-Now drag the slider until you've minimized the loss.
+Now drag the slider until you've minimized the error.
 
 ``w_0 = `` $w0_slider
 """
 
 # ╔═╡ 21a16ac9-f83e-46e8-81a2-09f79aa17eae
 md"""
-Note: the value of ``w_0`` that minimizes this particular loss function is the mean of the ``y`` values!
+Note: for this model, this particular error function is proportional to the sample variance of ``y``, so the value of ``w_0`` that minimizes the error (i.e. variance) is the sample mean of ``y``!
 """
 
 # ╔═╡ 670bb91c-5b84-4e93-8288-90734f92b4f2
@@ -87,11 +66,6 @@ w1_slider = @bind w1 Slider(-10:0.01:10; default=-3, show_value=true);
 
 # ╔═╡ 604d54f0-d815-451f-8abf-e444a7834a66
 w0_slider2 = @bind w0_2 Slider(-5:0.001:5; default=0.3, show_value=true);
-
-# ╔═╡ 1159b9d5-d1b9-4f6d-b181-1f4e6fa9c0cc
-md"""
-``w_0 =`` $w0_slider2 ``\quad`` ``w_1 =`` $w1_slider
-"""
 
 # ╔═╡ b657b5fe-af35-46e9-93c7-f897e7b22ddc
 md"""
@@ -228,36 +202,70 @@ We can think of each curve as a hypothesis, and the variability in the ensemble 
 # ╔═╡ 2909ff18-e98b-4149-843f-1c4709cfbb37
 plot([exp (x -> -exp(x)) tanh]; layout=(2, 2), title=[L"e^x" L"-e^x" L"\tanh(x)"], label="")
 
-# ╔═╡ 3991be1c-01f3-416a-a841-18f025a97e24
+# ╔═╡ ed7cb5c1-528a-4356-80dd-b337107eaf1f
 md"""
 ## Regression for classification problems
 
-Now, ``f`` maps from continus features to continuous observations, but what about a binary classification problem, where ``y`` can take on values only ``0`` and ``1``?
-"""
+Suppose some expert looked at our ``y`` values and assigned a label to each depending on whether they were above or below some threshold ``t``.
+We can represent the two labels with a single binary variable ``c``, i.e. ``c=1`` when ``y > t`` and ``c = 0`` when ``y \le t``.
 
-# ╔═╡ ed7cb5c1-528a-4356-80dd-b337107eaf1f
-md"""
-Sometimes we're not interested in the values of ``y`` directly but instead some thresholded form of it.
-For example, if ``y`` represents temperature, then maybe we just want to divide our observations into "hot" and "cold".
-Other times, we may not have access to ``y`` at all, and all we know are the thresholded values.
-This is now a classification problem, and we need a model that can perform classification.
+Since the ``y`` values are noisy, the labeller may want to assign a less certain probability like ``p(y > t) = \frac{1}{2}`` for points near the threshold and either much higher or lower probabilities for values far from the threshold.
+Modeling these probabilities would be a different regression problem.
+
+Alternatively, they could just report back the most probable class ``c``.
+In this case, we could interpret the class labels as absolutely confident probabilities, i.e. ``c==1`` could be interpreted as ``p(y > t) = 1``, while ``c=0`` could be interpreted as ``p(y > t) = 0``.
 """
 
 # ╔═╡ 0bbb588b-d2cd-4956-bc78-4560058605ed
 thresh_input = @bind thresh Slider(-4:0.01:4; default=0, show_value=true);
 
 # ╔═╡ 1e12834c-4b29-41db-ab1f-d93db62c8341
-md"threshold = $thresh_input"
+md"``t = ``$thresh_input"
 
 # ╔═╡ dfebe8a3-fbe5-4381-bce5-1cd403a7b365
 plot(
-    [atan tanh logistic];
+    [atan tanh logistic x->clamp(x, -1, 1)];
     layout=(2, 2),
     legend=false,
-    title=[L"\arctan(x)" L"\tanh(x)" L"\mathrm{logistic}(x)"],
-    xlabel=L"x",
-    ylabel=L"y",
+    title=[L"\arctan(z)" L"\tanh(z)" L"\mathrm{logistic}(z)" L"\mathrm{piecewise\ linear}"],
+    xlabel=L"z",
+    ylabel=L"p(c=1)",
 )
+
+# ╔═╡ 24b1008e-f038-4d3d-a7f0-43d4488387f4
+md"""
+See how where there is a clear separation of points from the two classes, the predicted probability sharply transitions from 0 to 1, but where there's more overlap, it more gradually transitions, so that there's a wider region where the probabilities are not close to 0 or 1.
+"""
+
+# ╔═╡ 3316bd55-0f83-48d1-8512-f9192953d716
+md"""
+## A quick $(html"<s>costume</s>") notation change
+
+At some point writing out sums is tedious, and it's more convenient to work with matrix/vector notation.
+Let's slightly abuse notation by defining ``\hat{f}(x)`` as ``\hat{f}`` applied elementwise to each data point (row) in ``x``:
+
+```math
+\hat{f}(x) = \begin{pmatrix}\hat{f}(x_1) \\ \hat{f}(x_2) \\ \vdots \\ \hat{f}(x_m) \end{pmatrix}
+```
+
+Similarly, let's define ``g(x)`` as a function that for each data point (row) of ``x`` computes a row vector with ``n`` entries, each corresponding to a computed feature:
+
+```math
+g(x) = \begin{pmatrix}
+	g_1(x_1) & g_2(x_1) & \dots & g_n(x_1)\\
+	g_1(x_2) & g_2(x_2) & \dots & g_n(x_2)\\
+	\vdots & \vdots & \ddots & \vdots \\
+	g_1(x_m) & g_2(x_m) & \dots & g_n(x_m)
+\end{pmatrix}
+```
+
+Then we can write our model as a matrix multiplication:
+```math
+\hat{f}(x) = g(x) w.
+```
+
+This particular notation is convenient as we progress to neural networks.
+"""
 
 # ╔═╡ 5505fc32-1e46-4256-831c-d1b94d1e946c
 md"""
@@ -269,18 +277,49 @@ To recap, we've seen 3 strategies for model expansion:
 3. Doing both at the same time
 
 We've so far used all of the weights in the middle, but why not apply some weights, then a function, then apply more weights?
+In our matrix notation, this might look like
+
+```math
+\hat{f}(x) = \sigma(\sigma(x W_1) W_2)
+```
 """
+
+# ╔═╡ 94a9846b-ff01-487d-aeac-ddd4ab81610c
+md"""
+## Neural Networks
+"""
+
+# ╔═╡ c10eafe5-e884-4de9-8e88-2bea9e0909b8
+md"""
+
+### The Perceptron
+
+The
+"""
+
+# ╔═╡ 7a41c4a4-b83a-4a34-a2c4-764fcd18daa1
+Flux.Losses.hinge_loss
 
 # ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
 md"""
-## Fitting 1D data with neural networks
+### Fitting 1D data with neural networks
 """
+
+# ╔═╡ 24ae3af6-c654-4cf3-b07c-1984e5ec414d
+@bind nhidden1 Slider(1:10; show_value=true)
 
 # ╔═╡ ea518070-cc7d-4a33-b9fd-082f7f1aeca1
 md"""
-## Fitting 2D data with neural networks
+### Fitting 2D data with neural networks
 
-### The perceptron
+Now that we have a generic framework for constructing neural networks, we can do the same thing for arbitrary numbers of features.
+For example, when we have two-dimensional data, such as points on a plane, we have two features.
+
+#### The data
+
+
+
+#### The perceptron
 """
 
 # ╔═╡ 5b237453-472f-414e-95e0-f44e980ea93a
@@ -341,30 +380,54 @@ y_i = f(x_i) + \mathrm{noise}.
 ```
 
 ``x_i`` is a single $(important("raw feature")).
-``y_i`` is an $(important("output")).
+``y_i`` is an $(important("output")) or continuous $(important("label")).
 """
 
 # ╔═╡ 48f03e74-1e25-41b8-a21c-fd810fadc2cf
 md"""
 ## Building a model
 
-Our goal is to build a function that approximates ``f``.
-We'll call this function ``\hat{f}`` (read "``f``-hat"), so that ``\hat{f}(x_i)`` approximates the unknown ``f(x_i)``.
+Our goal is to build a function that approximates the unknown ``f``.
+We'll call this function ``\hat{f}`` (read "``f``-hat").
 ``\hat{f}`` is a $(important("model")).
-That is, a model is just a function!
+A model is just a function!
 
-In machine learning, when we evaluate ``\hat{f}`` on the features ``x``, the result is called $(important("inference")) or prediction.
+In machine learning, when we evaluate ``\hat{f}`` on the raw features ``x``, the result is called $(important("inference")) or $(important("prediction")).
 Note that this is different from how the term "inference" is used in statistics!
 
 The first step to building any model is choosing its structure.
 """
 
+# ╔═╡ cd49e0a5-4120-481a-965e-72e7bdaf867c
+md"""
+## The proverbial straight line
+
+### The horizontal line
+
+The simplest model we could choose for ``f`` is a horizontal line:
+
+````math
+\hat{f}(x_i; w) = w_0
+````
+
+This model has one free parameter ``w_0``.
+Written this way, this is called an $(important("untrained model")).
+Once we fix the value of ``w_0``, it is called a $(important("trained model")).
+
+Training is just the process of setting ``w_0``.
+Drag the slider below to adjust ``w_0``.
+
+``w_0=`` $w0_slider
+
+Which fit is "best"?
+"""
+
 # ╔═╡ 4c7e53c5-1271-4acf-95cc-5345564d1b15
 md"""
 To say which fit is best, we need a measure of goodness of fit, or equivalently, of badness of fit.
-That is, we need a notion of error, and then the best model is the one with the smallest error.
-This is called a $(important("loss function")).
-Here, we choose a "sum-of-squares" loss function:
+That is, we need a notion of error; the best model has the smallest error.
+This is called an $(important("error function")) or $(important("loss function")).
+Here, we choose a "sum-of-squares" error function:
 ````math
 E(w) = \frac{1}{2}\sum_{i=1}^n (\hat{f}(x_i; w) - y_i)^2
 ````
@@ -382,10 +445,12 @@ For a better fit, let's give the line not only an intercept ``w_0`` but also als
 \hat{f}(x_i) = w_0 + w_1 x_i
 ````
 
-This model now has two degrees of freedom, which we can arrange in a $(important("weight")) vector ``w = \begin{pmatrix}w_0 \\ w_1\end{pmatrix}``.
+This model now has two degrees of freedom, which we can arrange in a $(important("weight")) or $(important("internal parameter")) vector ``w = \begin{pmatrix}w_0 \\ w_1\end{pmatrix}``.
 
 Drag the two sliders below to minimize the loss.
 How low can you go?
+
+``w_0 = `` $w0_slider2 ``\quad w_1=`` $w1_slider
 """
 
 # ╔═╡ def60ead-a40b-4376-82cd-a77455f6b942
@@ -420,7 +485,7 @@ To do this, we need to choose a different form for ``\hat{f}``.
 A very useful form we can take is as the weighted sum of simpler functions ``g_j``:
 
 ```math
-\hat{f}(y_i) = \sum_{j=1}^n w_j g_j(x_i).
+\hat{f}(y_i) = w_1 g_1(x_i) + w_2 g_2(x_i) + \ldots + w_n g_n(x_i) = \sum_{j=1}^n w_j g_j(x_i).
 ```
 
 Remember that we called ``x_i`` a raw feature.
@@ -441,7 +506,7 @@ One way we can systematically scale the model is by choosing as many computed fe
 For example, we can let ``g_j(x) = x^j``, so that
 
 ```math
-\hat{f}(x_i) = w_0 + w_1 x_1 + w_2 x^2 \ldots w_n x^n = \sum_{j=0}^n w_j x_i^j
+\hat{f}(x_i) = w_0 + w_1 x_1 + w_2 x^2 + \ldots + w_n x^n = \sum_{j=0}^n w_j x_i^j
 ```
 
 Functions of the form of ``f`` are called $(important("polynomials")), and any smooth function can be exactly computed with infinite terms (i.e. ``n \to \infty``) or approximated with finite terms (by picking some manageable ``n``).
@@ -504,7 +569,7 @@ Advantages:
 - We can incorporate prior information in a principled way
 - Typically more robust against overfitting
 - Represent uncertainty on hypotheses via a joint distribution
-- We can draw samples (generative modeling)
+- We can draw samples for visualizing uncertainty, checking assumptions, and propagating uncertainty to downstream analyses and decisions (generative modeling)
 - Many methods available for model checking
 
 Disadvantages:
@@ -546,8 +611,14 @@ where ``\phi`` smoothly maps from the entire real line to some subset of the rea
 
 # ╔═╡ ba59678b-1606-4132-9f19-0dae1e660195
 md"""
+Because the data (``c``) now takes on discrete values, this is a classification problem.
+But as it turns out, we can use much of our existing modeling framework to perform classification.
+
 There are 2 main changes we need to make here.
-First, we want to force our model predictions to be in the range `[0, 1]`.
+First, because we can interpret the ``c`` values as absolutely confident probabilities, we want our predictions to also be probabilities.
+These are more useful than the class labels themselves, because we can more easily identify when our model has a hard time making a prediction, and we can always use thresholding to turn our probabilities into class predictions.
+
+To predict probabilities, our predictions to be in the range `[0, 1]`.
 We do this using a $(important("sigmoid"))al (S-shaped) function.
 
 There are various sigmoids we can use in practice.
@@ -563,12 +634,13 @@ Our model is then
 \hat{f}(x_i; w) = \sigma\left( \sum_{j=1}^n w_j g_j(x_i)\right)
 ```
 
-While we could use the same sum-of-squares loss on this function, it turns out that a more appropriate loss is the $(important("log loss")):
+While we could use the same sum-of-squares loss on this function, it turns out that a more appropriate loss is a $(important("cross-entropy loss")):
 
 ````math
-E(w) = -\sum_{i=1}^k y_i \log \hat{f}(x_i; w) + (1 - y_i) \log (1 - \hat{f}(x_i; w))
+E(w) = -\sum_{i=1}^k c_i \log \hat{f}(x_i; w) + (1 - c_i) \log (1 - \hat{f}(x_i; w))
 ````
 
+Now we can fit our model.
 """
 
 # ╔═╡ d8983a9d-1880-4dc4-9c17-23281767e0c2
@@ -661,6 +733,9 @@ x = collect(range(0, 1; length=ndata))
 # ╔═╡ 01af74cf-172d-4561-a7d9-6131a22b4161
 y = generate_data(f, x, error_actual; rng=MersenneTwister(data_seed))
 
+# ╔═╡ ff087f04-110c-4658-bafd-f5ec46672c92
+DataFrame(; x=round.(x; digits=2), y=round.(y; digits=2))
+
 # ╔═╡ 1b4812d4-3879-4a79-a95d-20cad2959f5c
 plot_data(x, y)
 
@@ -702,13 +777,54 @@ ymore = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_seed))
 
 # ╔═╡ 09877b51-c34c-4351-ab8d-0fbee76d5a1b
 let
-    ythresh = ymore .> thresh
-    data_color = ifelse.(ythresh, :blue, :magenta)
+    c = ymore .> thresh
+    data_color = Int.(c)
     p = plot_data(xmore, ymore; data_color)
     hline!(p, [thresh]; color=:black)
-    p2 = plot_data(xmore, ythresh; data_color)
-    plot!(p2; ylabel=L"y > \mathrm{thresh}")
-    plot(p, p2; link=:x, layout=(2, 1))
+	p2 = plot_data(xmore, logistic.((ymore .- thresh) .* 10); data_color)
+    plot!(p2; ylabel=L"p(y > t)", ylims=(-0.1, 1.1))
+    p3 = plot_data(xmore, c; data_color)
+	plot!(p3; ylabel=L"c", ylims=(-0.1, 1.1))
+    plot(p, p2, p3; link=:x, layout=(3, 1))
+end
+
+# ╔═╡ 90a42425-9f1b-464a-9b10-d0a25cc6717c
+let
+	max_order = 3
+	thresh = 1.2
+	c = ymore .> thresh
+	features = xmore .^ (0:max_order)'
+	function obj(w)
+		z = features * w
+		# fuse loss and logistic for more numerical stability
+		return -sum(c .* z .- log1pexp.(z))
+	end
+	w = zeros(max_order + 1)
+	sol = optimize(obj, zeros(max_order + 1), LBFGS())
+	w = Optim.minimizer(sol)
+	f_hat(x::Real) = logistic.(dot(x .^ (0:max_order), w))
+	p = plot_data(xmore, c; f_hat, data_color=Int.(c))
+	plot!(p; ylabel=L"p(c = 1)")
+end
+
+# ╔═╡ 655c8b62-e180-41e6-a3b5-7317cdc76f73
+let
+	# TODO: seed
+	c = Int.(ymore .> 1.2)
+	data = [(xmore', c')]
+	model = Chain(
+		Dense(1, nhidden1, σ),  # x -> σ(x * W₁ + w₁₀)
+		Dense(nhidden1, 1, σ),  # z -> σ(z * W₂ + w₂₀)
+	)
+	w = Flux.params(model)
+	Flux.Losses
+	loss(x, y) = Flux.Losses.mse(model(x), y)
+	opt = Flux.Optimise.ADAM()
+	for _ in 1:100_000
+		Flux.train!(loss, w, data, opt)
+	end
+	f_hat(x) = only(model(fill(x, 1, 1)))
+	plot_data(xmore, c; data_color = Int.(c), f_hat)
 end
 
 # ╔═╡ f6f3c9b7-dd9d-4f7b-9626-93534c15f199
@@ -725,11 +841,18 @@ solve_regression(x, y) = x \ y
 # ╔═╡ ebb0c754-12f1-4f80-a5f6-98a61b915fa6
 solve_regression(x, y, λ) = (x'x + λ * I) \ (x'y) # ridge regression
 
+# ╔═╡ 53eab8ed-9a2d-4758-8d51-a74771e4f144
+function lossce(yhat, y)
+	return mapreduce(+, yhat, y) do yhati, yi
+		return xlogy(yhati, yi)
+	end
+end
+
 # ╔═╡ a5fe54fb-4f92-4a35-8038-8d36a4aa065c
 begin
     struct PolyModel{T<:Real,L<:Real,W<:AbstractVector{T}}
         w::W
-        λ::L
+		λ::L
     end
     PolyModel(max_order::Int, λ=0) = PolyModel(zeros(max_order + 1), λ)
     PolyModel(w) = PolyModel(w, 0)
@@ -740,7 +863,9 @@ begin
         return sum(x .^ p .* w)
     end
 
-    function fit!(m::PolyModel, x, y)
+	fit!(m::PolyModel, x, y) = fit!(m, x, y, identity)
+
+    function fit!(m::PolyModel, x, y, link::typeof(identity))
         w = m.w
         p = 0:(length(w) - 1)
         features = x .^ p'
@@ -1071,6 +1196,7 @@ end
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 LaTeXStrings = "b964fa9f-0449-5b57-a5c2-d3ea65f4040f"
 Latexify = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -1084,6 +1210,7 @@ Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 
 [compat]
 DataFrames = "~1.3.2"
+Flux = "~0.12.9"
 LaTeXStrings = "~1.3.0"
 Latexify = "~0.15.13"
 LogExpFunctions = "~0.3.10"
@@ -1103,9 +1230,9 @@ manifest_format = "2.0"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Markdown", "Random", "RandomExtensions", "SparseArrays", "Test"]
-git-tree-sha1 = "c0750f99036c12a14c93a7b10609cb892ffbd092"
+git-tree-sha1 = "831375b2bf4c71d53d50b64e3fb2f11ba35b5c62"
 uuid = "c3fe647b-3220-5bb0-a1ea-a7954cac585d"
-version = "0.24.1"
+version = "0.25.1"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -1188,9 +1315,9 @@ version = "3.8.0+0"
 
 [[deps.ArrayInterface]]
 deps = ["Compat", "IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
-git-tree-sha1 = "6e8fada11bb015ecf9263f64b156f98b546918c7"
+git-tree-sha1 = "d49f55ff9c7ee06930b0f65b1df2bfa811418475"
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "5.0.5"
+version = "4.0.4"
 
 [[deps.Artifacts]]
 uuid = "56f22d72-fd6d-98f1-02f0-08ddc0907c33"
@@ -1211,6 +1338,12 @@ deps = ["Dates", "IntervalSets", "IterTools", "RangeArrays"]
 git-tree-sha1 = "d127d5e4d86c7680b20c35d40b503c74b9a39b5e"
 uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
 version = "0.4.4"
+
+[[deps.BFloat16s]]
+deps = ["LinearAlgebra", "Printf", "Random", "Test"]
+git-tree-sha1 = "a598ecb0d717092b5539dbbe890c98bac842b072"
+uuid = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
+version = "0.2.0"
 
 [[deps.BangBang]]
 deps = ["Compat", "ConstructionBase", "Future", "InitialValues", "LinearAlgebra", "Requires", "Setfield", "Tables", "ZygoteRules"]
@@ -1243,6 +1376,17 @@ git-tree-sha1 = "19a35467a82e236ff51bc17a3a44b69ef35185a2"
 uuid = "6e34b625-4abd-537c-b88f-471c36dfa7a0"
 version = "1.0.8+0"
 
+[[deps.CEnum]]
+git-tree-sha1 = "215a9aa4a1f23fbd05b92769fdd62559488d70e9"
+uuid = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+version = "0.4.1"
+
+[[deps.CUDA]]
+deps = ["AbstractFFTs", "Adapt", "BFloat16s", "CEnum", "CompilerSupportLibraries_jll", "ExprTools", "GPUArrays", "GPUCompiler", "LLVM", "LazyArtifacts", "Libdl", "LinearAlgebra", "Logging", "Printf", "Random", "Random123", "RandomNumbers", "Reexport", "Requires", "SparseArrays", "SpecialFunctions", "TimerOutputs"]
+git-tree-sha1 = "a28686d7c83026069cc2505016269cca77506ed3"
+uuid = "052768ef-5323-5732-b1bb-66c8b64840ba"
+version = "3.8.5"
+
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
 git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
@@ -1263,9 +1407,9 @@ version = "1.28.1"
 
 [[deps.ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "c9a6160317d1abe9c44b3beb367fd448117679ca"
+git-tree-sha1 = "9950387274246d08af38f6eef8cb5480862a435f"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "1.13.0"
+version = "1.14.0"
 
 [[deps.ChangesOfVariables]]
 deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
@@ -1278,6 +1422,12 @@ deps = ["Distances", "LinearAlgebra", "NearestNeighbors", "Printf", "SparseArray
 git-tree-sha1 = "75479b7df4167267d75294d14b58244695beb2ac"
 uuid = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
 version = "0.14.2"
+
+[[deps.CodecZlib]]
+deps = ["TranscodingStreams", "Zlib_jll"]
+git-tree-sha1 = "ded953804d019afa9a3f98981d99b33e3db7b6da"
+uuid = "944b1d66-785c-5afd-91f1-9de20f533193"
+version = "0.7.0"
 
 [[deps.ColorSchemes]]
 deps = ["ColorTypes", "Colors", "FixedPointNumbers", "Random"]
@@ -1427,9 +1577,9 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 
 [[deps.Distributions]]
 deps = ["ChainRulesCore", "DensityInterface", "FillArrays", "LinearAlgebra", "PDMats", "Printf", "QuadGK", "Random", "SparseArrays", "SpecialFunctions", "Statistics", "StatsBase", "StatsFuns", "Test"]
-git-tree-sha1 = "c43e992f186abaf9965cc45e372f4693b7754b22"
+git-tree-sha1 = "5a4168170ede913a2cd679e53c2123cb4b889795"
 uuid = "31c24e10-a181-5473-b8eb-7969acd0382f"
-version = "0.25.52"
+version = "0.25.53"
 
 [[deps.DistributionsAD]]
 deps = ["Adapt", "ChainRules", "ChainRulesCore", "Compat", "DiffRules", "Distributions", "FillArrays", "LinearAlgebra", "NaNMath", "PDMats", "Random", "Requires", "SpecialFunctions", "StaticArrays", "StatsBase", "StatsFuns", "ZygoteRules"]
@@ -1455,9 +1605,9 @@ uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
 
 [[deps.DualNumbers]]
 deps = ["Calculus", "NaNMath", "SpecialFunctions"]
-git-tree-sha1 = "90b158083179a6ccbce2c7eb1446d5bf9d7ae571"
+git-tree-sha1 = "5837a837389fccf076445fce071c8ddaea35a566"
 uuid = "fa6b7ba4-c1ee-5f82-b5fc-ecf0adba8f74"
-version = "0.6.7"
+version = "0.6.8"
 
 [[deps.DynamicPPL]]
 deps = ["AbstractMCMC", "AbstractPPL", "BangBang", "Bijectors", "ChainRulesCore", "Distributions", "LinearAlgebra", "MacroTools", "Random", "Setfield", "Test", "ZygoteRules"]
@@ -1478,9 +1628,10 @@ uuid = "5ae413db-bbd1-5e63-b57d-d24a61df00f5"
 version = "2.2.3+0"
 
 [[deps.EllipsisNotation]]
-git-tree-sha1 = "18ee049accec8763be17a933737c1dd0fdf8673a"
+deps = ["ArrayInterface"]
+git-tree-sha1 = "d7ab55febfd0907b285fbf8dc0c73c0825d9d6aa"
 uuid = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
-version = "1.0.0"
+version = "1.3.0"
 
 [[deps.EllipticalSliceSampling]]
 deps = ["AbstractMCMC", "ArrayInterface", "Distributions", "Random", "Statistics"]
@@ -1541,6 +1692,12 @@ git-tree-sha1 = "335bfdceacc84c5cdf16aadc768aa5ddfc5383cc"
 uuid = "53c48c17-4a7d-5ca2-90c5-79b7896eea93"
 version = "0.8.4"
 
+[[deps.Flux]]
+deps = ["AbstractTrees", "Adapt", "ArrayInterface", "CUDA", "CodecZlib", "Colors", "DelimitedFiles", "Functors", "Juno", "LinearAlgebra", "MacroTools", "NNlib", "NNlibCUDA", "Pkg", "Printf", "Random", "Reexport", "SHA", "SparseArrays", "Statistics", "StatsBase", "Test", "ZipFile", "Zygote"]
+git-tree-sha1 = "983271b47332fd3d9488d6f2d724570290971794"
+uuid = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+version = "0.12.9"
+
 [[deps.Fontconfig_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Expat_jll", "FreeType2_jll", "JLLWrappers", "Libdl", "Libuuid_jll", "Pkg", "Zlib_jll"]
 git-tree-sha1 = "21efd19106a55620a188615da6d3d06cd7f6ee03"
@@ -1586,6 +1743,18 @@ git-tree-sha1 = "51d2dfe8e590fbd74e7a842cf6d13d8a2f45dc01"
 uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
 version = "3.3.6+0"
 
+[[deps.GPUArrays]]
+deps = ["Adapt", "LLVM", "LinearAlgebra", "Printf", "Random", "Serialization", "Statistics"]
+git-tree-sha1 = "9010083c218098a3695653773695a9949e7e8f0d"
+uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
+version = "8.3.1"
+
+[[deps.GPUCompiler]]
+deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "TimerOutputs", "UUIDs"]
+git-tree-sha1 = "647a54f196b5ffb7c3bc2fec5c9a57fa273354cc"
+uuid = "61eb1bfa-7361-4325-ad38-22787b887f55"
+version = "0.13.14"
+
 [[deps.GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "RelocatableFolders", "Serialization", "Sockets", "Test", "UUIDs"]
 git-tree-sha1 = "9f836fb62492f4b0f0d3b06f55983f2704ed0883"
@@ -1629,9 +1798,9 @@ version = "1.0.2"
 
 [[deps.Groebner]]
 deps = ["AbstractAlgebra", "Combinatorics", "Logging", "MultivariatePolynomials", "Primes", "Random"]
-git-tree-sha1 = "1a13fd88bfaf0c5181da639edf4e773f756236c7"
+git-tree-sha1 = "585db15083afd8b105d611af8723fe5b245fc928"
 uuid = "0b43b601-686d-58a3-8a1c-6623616c7cd4"
-version = "0.2.0"
+version = "0.2.1"
 
 [[deps.GroupsCore]]
 deps = ["Markdown", "Random"]
@@ -1767,6 +1936,12 @@ git-tree-sha1 = "b53380851c6e6664204efb2e62cd24fa5c47e4ba"
 uuid = "aacddb02-875f-59d6-b918-886e6ef4fbf8"
 version = "2.1.2+0"
 
+[[deps.Juno]]
+deps = ["Base64", "Logging", "Media", "Profile"]
+git-tree-sha1 = "07cb43290a840908a771552911a6274bc6c072c7"
+uuid = "e5e0dc1b-0480-54bc-9374-aad01c23163d"
+version = "0.8.4"
+
 [[deps.KernelDensity]]
 deps = ["Distributions", "DocStringExtensions", "FFTW", "Interpolations", "StatsBase"]
 git-tree-sha1 = "591e8dc09ad18386189610acafb970032c519707"
@@ -1784,6 +1959,18 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "bf36f528eec6634efc60d7ec062008f171071434"
 uuid = "88015f11-f218-50d7-93a8-a6af411a945d"
 version = "3.0.0+1"
+
+[[deps.LLVM]]
+deps = ["CEnum", "LLVMExtra_jll", "Libdl", "Printf", "Unicode"]
+git-tree-sha1 = "c9b86064be5ae0f63e50816a5a90b08c474507ae"
+uuid = "929cbde3-209d-540e-8aea-75f648917ca0"
+version = "4.9.1"
+
+[[deps.LLVMExtra_jll]]
+deps = ["Artifacts", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
+git-tree-sha1 = "5558ad3c8972d602451efe9d81c78ec14ef4f5ef"
+uuid = "dad2f222-ce93-54a1-a47d-0025e8a3acab"
+version = "0.0.14+2"
 
 [[deps.LRUCache]]
 git-tree-sha1 = "d64a0aff6691612ab9fb0117b0995270871c5dfc"
@@ -1975,6 +2162,12 @@ git-tree-sha1 = "e498ddeee6f9fdb4551ce855a46f54dbd900245f"
 uuid = "442fdcdd-2543-5da2-b0f3-8c86c306513e"
 version = "0.3.1"
 
+[[deps.Media]]
+deps = ["MacroTools", "Test"]
+git-tree-sha1 = "75a54abd10709c01f1b86b84ec225d26e840ed58"
+uuid = "e89f7d12-3494-54d1-8411-f7d8b9ae1f27"
+version = "0.5.0"
+
 [[deps.Metatheory]]
 deps = ["AutoHashEquals", "DataStructures", "Dates", "DocStringExtensions", "Parameters", "Reexport", "TermInterface", "ThreadsX", "TimerOutputs"]
 git-tree-sha1 = "0886d229caaa09e9f56bcf1991470bd49758a69f"
@@ -2029,6 +2222,12 @@ git-tree-sha1 = "a59a614b8b4ea6dc1dcec8c6514e251f13ccbe10"
 uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 version = "0.8.4"
 
+[[deps.NNlibCUDA]]
+deps = ["CUDA", "LinearAlgebra", "NNlib", "Random", "Statistics"]
+git-tree-sha1 = "0d18b4c80a92a00d3d96e8f9677511a7422a946e"
+uuid = "a00861dc-f156-4864-bf3c-e6376f28a68d"
+version = "0.2.2"
+
 [[deps.NaNMath]]
 git-tree-sha1 = "b086b7ea07f8e38cf122f5016af580881ac914fe"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
@@ -2047,9 +2246,9 @@ version = "1.0.0"
 
 [[deps.NearestNeighbors]]
 deps = ["Distances", "StaticArrays"]
-git-tree-sha1 = "16baacfdc8758bc374882566c9187e785e85c2f0"
+git-tree-sha1 = "ded92de95031d4a8c61dfb6ba9adb6f1d8016ddd"
 uuid = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
-version = "0.4.9"
+version = "0.4.10"
 
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
@@ -2156,9 +2355,9 @@ version = "1.2.0"
 
 [[deps.Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "Unzip"]
-git-tree-sha1 = "1690b713c3b460c955a2957cd7487b1b725878a7"
+git-tree-sha1 = "5f6e1309595e95db24342e56cd4dabd2159e0b79"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.27.1"
+version = "1.27.3"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
@@ -2168,9 +2367,9 @@ version = "0.7.37"
 
 [[deps.PooledArrays]]
 deps = ["DataAPI", "Future"]
-git-tree-sha1 = "db3a23166af8aebf4db5ef87ac5b00d36eb771e2"
+git-tree-sha1 = "28ef6c7ce353f0b35d0df0d5930e0d072c1f5b9b"
 uuid = "2dfb63ee-cc39-5dd5-95bd-886bf059d720"
-version = "1.4.0"
+version = "1.4.1"
 
 [[deps.PositiveFactorizations]]
 deps = ["LinearAlgebra"]
@@ -2199,6 +2398,10 @@ version = "0.5.1"
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
+[[deps.Profile]]
+deps = ["Printf"]
+uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+
 [[deps.ProgressLogging]]
 deps = ["Logging", "SHA", "UUIDs"]
 git-tree-sha1 = "80d919dee55b9c50e8d9e2da5eeafff3fe58b539"
@@ -2207,9 +2410,9 @@ version = "0.1.4"
 
 [[deps.ProgressMeter]]
 deps = ["Distributed", "Printf"]
-git-tree-sha1 = "afadeba63d90ff223a6a48d2009434ecee2ec9e8"
+git-tree-sha1 = "d7a7aef8f8f2d537104f170139553b14dfe39fe9"
 uuid = "92933f4c-e287-5a05-a399-4b506db050ca"
-version = "1.7.1"
+version = "1.7.2"
 
 [[deps.Qt5Base_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Fontconfig_jll", "Glib_jll", "JLLWrappers", "Libdl", "Libglvnd_jll", "OpenSSL_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libxcb_jll", "Xorg_xcb_util_image_jll", "Xorg_xcb_util_keysyms_jll", "Xorg_xcb_util_renderutil_jll", "Xorg_xcb_util_wm_jll", "Zlib_jll", "xkbcommon_jll"]
@@ -2231,11 +2434,23 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 deps = ["SHA", "Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 
+[[deps.Random123]]
+deps = ["Random", "RandomNumbers"]
+git-tree-sha1 = "afeacaecf4ed1649555a19cb2cad3c141bbc9474"
+uuid = "74087812-796a-5b5d-8853-05524746bad3"
+version = "1.5.0"
+
 [[deps.RandomExtensions]]
 deps = ["Random", "SparseArrays"]
 git-tree-sha1 = "062986376ce6d394b23d5d90f01d81426113a3c9"
 uuid = "fb686558-2515-59ef-acaa-46db3789a887"
 version = "0.4.3"
+
+[[deps.RandomNumbers]]
+deps = ["Random", "Requires"]
+git-tree-sha1 = "043da614cc7e95c703498a491e2c21f58a2b8111"
+uuid = "e6cf234a-135c-5ec9-84dd-332b85af5143"
+version = "1.5.3"
 
 [[deps.RangeArrays]]
 git-tree-sha1 = "b9039e93773ddcfc828f12aadf7115b4b4d225f5"
@@ -2261,9 +2476,9 @@ version = "1.2.1"
 
 [[deps.RecipesPipeline]]
 deps = ["Dates", "NaNMath", "PlotUtils", "RecipesBase"]
-git-tree-sha1 = "995a812c6f7edea7527bb570f0ac39d0fb15663c"
+git-tree-sha1 = "dc1e451e15d90347a7decc4221842a022b011714"
 uuid = "01d81517-befc-4cb6-b9ec-a95719d0359c"
-version = "0.5.1"
+version = "0.5.2"
 
 [[deps.RecursiveArrayTools]]
 deps = ["Adapt", "ArrayInterface", "ChainRulesCore", "DocStringExtensions", "FillArrays", "LinearAlgebra", "RecipesBase", "Requires", "StaticArrays", "Statistics", "ZygoteRules"]
@@ -2323,9 +2538,9 @@ uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
 
 [[deps.SciMLBase]]
 deps = ["ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "RecipesBase", "RecursiveArrayTools", "StaticArrays", "Statistics", "Tables", "TreeViews"]
-git-tree-sha1 = "c086056df381502621dc6b5f1d1a0a1c2d0185e7"
+git-tree-sha1 = "61159e034c4cb36b76ad2926bb5bf8c28cc2fb12"
 uuid = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
-version = "1.28.0"
+version = "1.29.0"
 
 [[deps.ScientificTypesBase]]
 git-tree-sha1 = "a8e18eb383b5ecf1b5e6fc237eb39255044fd92b"
@@ -2390,15 +2605,15 @@ version = "0.1.14"
 
 [[deps.Static]]
 deps = ["IfElse"]
-git-tree-sha1 = "87e9954dfa33fd145694e42337bdd3d5b07021a6"
+git-tree-sha1 = "65068e4b4d10f3c31aaae2e6cb92b6c6cedca610"
 uuid = "aedffcd0-7271-4cad-89d0-dc628f76c6d3"
-version = "0.6.0"
+version = "0.5.6"
 
 [[deps.StaticArrays]]
 deps = ["LinearAlgebra", "Random", "Statistics"]
-git-tree-sha1 = "6976fab022fea2ffea3d945159317556e5dad87c"
+git-tree-sha1 = "4f6ec5d99a28e1a749559ef7dd518663c5eca3d5"
 uuid = "90137ffa-7385-5640-81b9-e52037218182"
-version = "1.4.2"
+version = "1.4.3"
 
 [[deps.StatisticalTraits]]
 deps = ["ScientificTypesBase"]
@@ -2514,6 +2729,12 @@ deps = ["Adapt", "DiffRules", "ForwardDiff", "LinearAlgebra", "LogExpFunctions",
 git-tree-sha1 = "0874c1b5de1b5529b776cfeca3ec0acfada97b1b"
 uuid = "9f7883ad-71c0-57eb-9f7f-b5c9e6d3789c"
 version = "0.2.20"
+
+[[deps.TranscodingStreams]]
+deps = ["Random", "Test"]
+git-tree-sha1 = "216b95ea110b5972db65aa90f88d8d89dcb8851c"
+uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
+version = "0.9.6"
 
 [[deps.Transducers]]
 deps = ["Adapt", "ArgCheck", "BangBang", "Baselet", "CompositionsBase", "DefineSingletons", "Distributed", "InitialValues", "Logging", "Markdown", "MicroCollections", "Requires", "Setfield", "SplittablesBase", "Tables"]
@@ -2723,6 +2944,12 @@ git-tree-sha1 = "79c31e7844f6ecf779705fbc12146eb190b7d845"
 uuid = "c5fb5394-a638-5e4d-96e5-b29de1b5cf10"
 version = "1.4.0+3"
 
+[[deps.ZipFile]]
+deps = ["Libdl", "Printf", "Zlib_jll"]
+git-tree-sha1 = "3593e69e469d2111389a9bd06bac1f3d730ac6de"
+uuid = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
+version = "0.9.4"
+
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
@@ -2732,6 +2959,12 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "e45044cd873ded54b6a5bac0eb5c971392cf1927"
 uuid = "3161d3a3-bdf6-5164-811a-617609db77b4"
 version = "1.5.2+0"
+
+[[deps.Zygote]]
+deps = ["AbstractFFTs", "ChainRules", "ChainRulesCore", "DiffRules", "Distributed", "FillArrays", "ForwardDiff", "IRTools", "InteractiveUtils", "LinearAlgebra", "MacroTools", "NaNMath", "Random", "Requires", "SparseArrays", "SpecialFunctions", "Statistics", "ZygoteRules"]
+git-tree-sha1 = "52adc0a505b6421a8668f13dcdb0c4cb498bd72c"
+uuid = "e88e6eb3-aa80-5325-afca-941959d7151f"
+version = "0.6.37"
 
 [[deps.ZygoteRules]]
 deps = ["MacroTools"]
@@ -2798,11 +3031,12 @@ version = "0.9.1+5"
 # ╟─4004013d-6fd6-4e8c-a218-745cb33efef4
 # ╟─2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
 # ╟─18198312-54c3-4b4f-b865-3a6a775ce483
+# ╠═ff087f04-110c-4658-bafd-f5ec46672c92
+# ╟─31b1a0e4-216f-4c90-b16e-f542000c8aee
 # ╠═1b4812d4-3879-4a79-a95d-20cad2959f5c
 # ╟─48f03e74-1e25-41b8-a21c-fd810fadc2cf
 # ╟─cd49e0a5-4120-481a-965e-72e7bdaf867c
 # ╠═8eb34f0c-166b-4973-bdea-2ae64e3d34aa
-# ╟─61238019-df77-4067-a9b4-0766d056e891
 # ╠═72198269-d070-493f-92eb-36135692ca8f
 # ╟─4c7e53c5-1271-4acf-95cc-5345564d1b15
 # ╟─0b719897-4515-46c3-830a-eaec4d1666a2
@@ -2811,7 +3045,6 @@ version = "0.9.1+5"
 # ╟─ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 # ╠═670bb91c-5b84-4e93-8288-90734f92b4f2
 # ╠═604d54f0-d815-451f-8abf-e444a7834a66
-# ╟─1159b9d5-d1b9-4f6d-b181-1f4e6fa9c0cc
 # ╠═345ae96b-92c2-4ac4-bfdf-302113627ffb
 # ╟─b657b5fe-af35-46e9-93c7-f897e7b22ddc
 # ╠═050548ce-a62e-43e7-bb6a-e96a2f874f55
@@ -2863,7 +3096,6 @@ version = "0.9.1+5"
 # ╟─b0773555-44ac-4b06-a410-d25ee1f42399
 # ╟─df8f0019-84b9-4309-ab16-4a909fa94e88
 # ╠═2909ff18-e98b-4149-843f-1c4709cfbb37
-# ╟─3991be1c-01f3-416a-a841-18f025a97e24
 # ╟─ed7cb5c1-528a-4356-80dd-b337107eaf1f
 # ╠═0bbb588b-d2cd-4956-bc78-4560058605ed
 # ╟─1e12834c-4b29-41db-ab1f-d93db62c8341
@@ -2872,9 +3104,17 @@ version = "0.9.1+5"
 # ╟─ba59678b-1606-4132-9f19-0dae1e660195
 # ╠═dfebe8a3-fbe5-4381-bce5-1cd403a7b365
 # ╟─b53798f9-24c2-4def-ab6f-447a5d809865
+# ╠═90a42425-9f1b-464a-9b10-d0a25cc6717c
+# ╟─24b1008e-f038-4d3d-a7f0-43d4488387f4
+# ╟─3316bd55-0f83-48d1-8512-f9192953d716
 # ╟─5505fc32-1e46-4256-831c-d1b94d1e946c
-# ╟─d2e5bde1-8c65-494f-8944-b16dec6ab193
-# ╟─ea518070-cc7d-4a33-b9fd-082f7f1aeca1
+# ╠═94a9846b-ff01-487d-aeac-ddd4ab81610c
+# ╠═c10eafe5-e884-4de9-8e88-2bea9e0909b8
+# ╠═7a41c4a4-b83a-4a34-a2c4-764fcd18daa1
+# ╠═d2e5bde1-8c65-494f-8944-b16dec6ab193
+# ╠═24ae3af6-c654-4cf3-b07c-1984e5ec414d
+# ╠═655c8b62-e180-41e6-a3b5-7317cdc76f73
+# ╠═ea518070-cc7d-4a33-b9fd-082f7f1aeca1
 # ╟─5b237453-472f-414e-95e0-f44e980ea93a
 # ╠═ef43aef6-80ec-4976-91e6-84a74d29a83e
 # ╠═f75ad936-8c06-4e00-92d7-1f86532c0072
@@ -2904,6 +3144,7 @@ version = "0.9.1+5"
 # ╟─318a6643-5377-4152-8468-51dae1b78144
 # ╠═bddafce9-30e4-4708-96ae-938bff9edfe7
 # ╠═ebb0c754-12f1-4f80-a5f6-98a61b915fa6
+# ╠═53eab8ed-9a2d-4758-8d51-a74771e4f144
 # ╠═a5fe54fb-4f92-4a35-8038-8d36a4aa065c
 # ╠═86e58e39-186e-470f-832a-32cd86717daa
 # ╠═0a06b151-461a-470b-927b-851c64d826bf
