@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -20,7 +27,7 @@ begin
         Random,
         StatsPlots,
         LinearAlgebra,
-		Flux,
+        Flux,
         Turing,
         LaTeXStrings,
         DataFrames,
@@ -224,7 +231,7 @@ md"``t = ``$thresh_input"
 
 # ╔═╡ dfebe8a3-fbe5-4381-bce5-1cd403a7b365
 plot(
-    [atan tanh logistic x->clamp(x, -1, 1)];
+    [atan tanh logistic x -> clamp(x, -1, 1)];
     layout=(2, 2),
     legend=false,
     title=[L"\arctan(z)" L"\tanh(z)" L"\mathrm{logistic}(z)" L"\mathrm{piecewise\ linear}"],
@@ -329,52 +336,56 @@ f2(x, y) = sinpi(2x) * sinpi(2y)
 
 # ╔═╡ 10b73d22-cf2a-479c-84b6-6a63a694f398
 x2, c2 = let
-	rng = MersenneTwister(92)
-	x = rand(rng, 400, 2)
-	z = f2.(x[:, 1], x[:, 2]) .+ randn.(rng) .* 0.1
-	c = Int.(z .> 0)
-	x, c
+    rng = MersenneTwister(92)
+    x = rand(rng, 400, 2)
+    z = f2.(x[:, 1], x[:, 2]) .+ randn.(rng) .* 0.1
+    c = Int.(z .> 0)
+    x, c
 end;
 
 # ╔═╡ 82a245fa-6e02-41f4-bba4-769863a896db
 DataFrame(
-	"x[1]" => round.(x2[:, 1]; digits=2),
-	"x[2]" => round.(x2[:, 2]; digits=2),
-	"c" => c2,
+    "x[1]" => round.(x2[:, 1]; digits=2), "x[2]" => round.(x2[:, 2]; digits=2), "c" => c2
 )
 
 # ╔═╡ dda5a074-3f7b-46dd-bc4b-cb05117ec425
 let
-	scatter(x2[:, 1], x2[:, 2]; color=c2 .+ 1, legend=false, xlabel=L"x_1", ylabel=L"x_2", msw=0)
+    scatter(
+        x2[:, 1], x2[:, 2]; color=c2 .+ 1, legend=false, xlabel=L"x_1", ylabel=L"x_2", msw=0
+    )
 end
 
 # ╔═╡ f52b2954-6edb-48cc-8dc9-94a4ef613012
 let
-	Random.seed!(28)
-	λ = 1e-6
-	data = [(x2', c2')]
-	if nhidden2 == 0
-		model = Dense(2, 1, Flux.σ)
-	else
-		model = Chain(
-			Dense(2, nhidden2, Flux.σ),  # x -> σ(x * W₁ + w₁₀)
-			Dense(nhidden2, 1, Flux.σ),  # z -> σ(z * W₂ + w₂₀)
-		)
-	end
-	w = Flux.params(model)
-	penalty() = sum(wi -> sum(abs2, wi), w) * λ
-	loss(x, y) = Flux.Losses.mse(model(x), y) + penalty()
-	opt = Flux.Optimise.ADAM()
-	for _ in 1:20_000
-		Flux.train!(loss, w, data, opt)
-	end
-	f_hat(x, y) = only(model([x, y]))
-	lex = latexify(f_hat(Symbolics.Sym{Float64}(:x_1), Symbolics.Sym{Float64}(:x_2)); fmt="%.2f", env=:raw)
-	equation = L"%$lex"
-	p = contourf(0:0.01:1, 0:0.01:1, f_hat, color=:coolwarm, linewidth=0)
-	scatter!(p, x2[:, 1], x2[:, 2]; color=c2.+1, label="")
-	annotate!(p, [(0, 1.06, (equation, :left, :top, 10))])
-	plot!(; xlabel=L"x_1", ylabel=L"x_2")
+    Random.seed!(28)
+    λ = 1e-6
+    data = [(x2', c2')]
+    if nhidden2 == 0
+        model = Dense(2, 1, Flux.σ)
+    else
+        model = Chain(
+            Dense(2, nhidden2, Flux.σ),  # x -> σ(x * W₁ + w₁₀)
+            Dense(nhidden2, 1, Flux.σ),  # z -> σ(z * W₂ + w₂₀)
+        )
+    end
+    w = Flux.params(model)
+    penalty() = sum(wi -> sum(abs2, wi), w) * λ
+    loss(x, y) = Flux.Losses.mse(model(x), y) + penalty()
+    opt = Flux.Optimise.ADAM()
+    for _ in 1:20_000
+        Flux.train!(loss, w, data, opt)
+    end
+    f_hat(x, y) = only(model([x, y]))
+    lex = latexify(
+        f_hat(Symbolics.Sym{Float64}(:x_1), Symbolics.Sym{Float64}(:x_2));
+        fmt="%.2f",
+        env=:raw,
+    )
+    equation = L"%$lex"
+    p = contourf(0:0.01:1, 0:0.01:1, f_hat; color=:coolwarm, linewidth=0)
+    scatter!(p, x2[:, 1], x2[:, 2]; color=c2 .+ 1, label="")
+    annotate!(p, [(0, 1.06, (equation, :left, :top, 10))])
+    plot!(; xlabel=L"x_1", ylabel=L"x_2")
 end
 
 # ╔═╡ 5b237453-472f-414e-95e0-f44e980ea93a
@@ -567,7 +578,7 @@ For example, we can let ``g_j(x) = x^j``, so that
 Functions of the form of ``f`` are called $(important("polynomials")), and any smooth function can be exactly computed with infinite terms (i.e. ``n \to \infty``) or approximated with finite terms (by picking some manageable ``n``).
 This kind of model is called $(important("polynomial regression")).
 
-Our line with two degrees of freedom is the special case $n=1$, though note again that here ``\hat{f}`` is still linear with respect to the weights ``w``.
+Our line with two degrees of freedom is the special case ``n=1``, though note again that here ``\hat{f}`` is still linear with respect to the weights ``w``.
 """
 
 # ╔═╡ 39414e5e-1256-4497-9738-e2ecdff62d9d
@@ -856,52 +867,52 @@ let
     data_color = Int.(c)
     p = plot_data(xmore, ymore; data_color)
     hline!(p, [thresh]; color=:black)
-	p2 = plot_data(xmore, logistic.((ymore .- thresh) .* 10); data_color)
+    p2 = plot_data(xmore, logistic.((ymore .- thresh) .* 10); data_color)
     plot!(p2; ylabel=L"p(y > t)", ylims=(-0.1, 1.1))
     p3 = plot_data(xmore, c; data_color)
-	plot!(p3; ylabel=L"c", ylims=(-0.1, 1.1))
+    plot!(p3; ylabel=L"c", ylims=(-0.1, 1.1))
     plot(p, p2, p3; link=:x, layout=(3, 1))
 end
 
 # ╔═╡ 90a42425-9f1b-464a-9b10-d0a25cc6717c
 let
-	max_order = 3
-	thresh = 1.2
-	c = ymore .> thresh
-	features = xmore .^ (0:max_order)'
-	function obj(w)
-		z = features * w
-		# fuse loss and logistic for more numerical stability
-		return -sum(c .* z .- log1pexp.(z))
-	end
-	w = zeros(max_order + 1)
-	sol = Optim.optimize(obj, zeros(max_order + 1), LBFGS())
-	w = Optim.minimizer(sol)
-	f_hat(x::Real) = logistic.(dot(x .^ (0:max_order), w))
-	p = plot_data(xmore, c; f_hat, data_color=Int.(c))
-	plot!(p; ylabel=L"p(c = 1)")
+    max_order = 3
+    thresh = 1.2
+    c = ymore .> thresh
+    features = xmore .^ (0:max_order)'
+    function obj(w)
+        z = features * w
+        # fuse loss and logistic for more numerical stability
+        return -sum(c .* z .- log1pexp.(z))
+    end
+    w = zeros(max_order + 1)
+    sol = Optim.optimize(obj, zeros(max_order + 1), LBFGS())
+    w = Optim.minimizer(sol)
+    f_hat(x::Real) = logistic.(dot(x .^ (0:max_order), w))
+    p = plot_data(xmore, c; f_hat, data_color=Int.(c))
+    plot!(p; ylabel=L"p(c = 1)")
 end
 
 # ╔═╡ 655c8b62-e180-41e6-a3b5-7317cdc76f73
 let
-	Random.seed!(32)
-	c = Int.(ymore .> 1.2)
-	data = [(xmore', c')]
-	model = Chain(
-		Dense(1, nhidden1, Flux.σ),  # x -> σ(x * W₁ + w₁₀)
-		Dense(nhidden1, 1, Flux.σ),  # z -> σ(z * W₂ + w₂₀)
-	)
-	model(xmore')
+    Random.seed!(32)
+    c = Int.(ymore .> 1.2)
+    data = [(xmore', c')]
+    model = Chain(
+        Dense(1, nhidden1, Flux.σ),  # x -> σ(x * W₁ + w₁₀)
+        Dense(nhidden1, 1, Flux.σ),  # z -> σ(z * W₂ + w₂₀)
+    )
+    model(xmore')
 
-	w = Flux.params(model)
-	loss(x, y) = Flux.Losses.mse(model(x), y)
-	opt = Flux.Optimise.ADAM()
-	for _ in 1:50_000
-		Flux.train!(loss, w, data, opt)
-	end
-	f_hat(x) = only(model(fill(x, 1, 1)))
-	equation = latexify(f_hat(Symbolics.Sym{Real}(:x)); fmt="%.2f", env=:raw)
-	plot_data(xmore, c; data_color = Int.(c), f_hat, equation)
+    w = Flux.params(model)
+    loss(x, y) = Flux.Losses.mse(model(x), y)
+    opt = Flux.Optimise.ADAM()
+    for _ in 1:50_000
+        Flux.train!(loss, w, data, opt)
+    end
+    f_hat(x) = only(model(fill(x, 1, 1)))
+    equation = latexify(f_hat(Symbolics.Sym{Real}(:x)); fmt="%.2f", env=:raw)
+    plot_data(xmore, c; data_color=Int.(c), f_hat, equation)
 end
 
 # ╔═╡ f6f3c9b7-dd9d-4f7b-9626-93534c15f199
@@ -920,16 +931,16 @@ solve_regression(x, y, λ) = (x'x + λ * I) \ (x'y) # ridge regression
 
 # ╔═╡ 53eab8ed-9a2d-4758-8d51-a74771e4f144
 function lossce(yhat, y)
-	return mapreduce(+, yhat, y) do yhati, yi
-		return xlogy(yhati, yi)
-	end
+    return mapreduce(+, yhat, y) do yhati, yi
+        return xlogy(yhati, yi)
+    end
 end
 
 # ╔═╡ a5fe54fb-4f92-4a35-8038-8d36a4aa065c
 begin
     struct PolyModel{T<:Real,L<:Real,W<:AbstractVector{T}}
         w::W
-		λ::L
+        λ::L
     end
     PolyModel(max_order::Int, λ=0) = PolyModel(zeros(max_order + 1), λ)
     PolyModel(w) = PolyModel(w, 0)
@@ -940,7 +951,7 @@ begin
         return sum(x .^ p .* w)
     end
 
-	fit!(m::PolyModel, x, y) = fit!(m, x, y, identity)
+    fit!(m::PolyModel, x, y) = fit!(m, x, y, identity)
 
     function fit!(m::PolyModel, x, y, link::typeof(identity))
         w = m.w
