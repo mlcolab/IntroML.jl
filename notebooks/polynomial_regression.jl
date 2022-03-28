@@ -265,10 +265,10 @@ Then we can write our model as a matrix multiplication:
 ```
 
 This particular notation is convenient as we progress to neural networks.
-"""A more convenient notation is to operate on the entire dataset ``x`` and replace the sum with a matrix multiplication:
+A more convenient notation is to operate on the entire dataset ``x`` and replace the sum with a matrix multiplication:
+"""
 
-
-# ╔═╡ 5505fc32-1e46-4256-831c-d1b94d1e946c
+# ╔═╡ 29e817d4-4583-4c54-8ecc-53bc3fcd7d39
 md"""
 ## A quick $(html"<s>costume</s>") notation change!
 
@@ -3137,7 +3137,8 @@ version = "0.9.1+5"
 # ╟─b53798f9-24c2-4def-ab6f-447a5d809865
 # ╠═90a42425-9f1b-464a-9b10-d0a25cc6717c
 # ╟─24b1008e-f038-4d3d-a7f0-43d4488387f4
-# ╟─3316bd55-0f83-48d1-8512-f9192953d716
+# ╠═3316bd55-0f83-48d1-8512-f9192953d716
+# ╠═29e817d4-4583-4c54-8ecc-53bc3fcd7d39
 # ╟─5505fc32-1e46-4256-831c-d1b94d1e946c
 # ╠═94a9846b-ff01-487d-aeac-ddd4ab81610c
 # ╠═c10eafe5-e884-4de9-8e88-2bea9e0909b8
