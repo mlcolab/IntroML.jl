@@ -2,13 +2,8 @@
 CurrentModule = IntroML
 ```
 
-# IntroML
+# Introduction to Machine Learning
 
-Documentation for [IntroML](https://github.com/mlcolab/IntroML.jl).
+Materials for the Introduction to Machine Learning workshop with the [Machine Learning ⇌ Science Colaboratory](https://mlcolab.org/).
 
-```@index
-```
-
-```@autodocs
-Modules = [IntroML]
-```
+- [Supervised Learning: One step at a time](./supervised_learning.html)
