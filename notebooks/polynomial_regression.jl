@@ -305,6 +305,8 @@ In our matrix notation, this might look like
 # ╔═╡ 94a9846b-ff01-487d-aeac-ddd4ab81610c
 md"""
 ## Neural Networks
+
+TO-DO: add architecture image, juxtaposed with formula.
 """
 
 # ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
@@ -382,7 +384,7 @@ let
         env=:raw,
     )
     equation = L"%$lex"
-    p = contourf(0:0.01:1, 0:0.01:1, f_hat; color=:coolwarm, linewidth=0)
+    p = contourf(0:0.01:1, 0:0.01:1, f_hat; color=:coolwarm, linewidth=0, clim=(0, 1))
     scatter!(p, x2[:, 1], x2[:, 2]; color=c2 .+ 1, label="")
     annotate!(p, [(0, 1.06, (equation, :left, :top, 10))])
     plot!(; xlabel=L"x_1", ylabel=L"x_2")
@@ -899,8 +901,8 @@ let
     c = Int.(ymore .> 1.2)
     data = [(xmore', c')]
     model = Chain(
-        Dense(1, nhidden1, Flux.σ),  # x -> σ(x * W₁ + w₁₀)
-        Dense(nhidden1, 1, Flux.σ),  # z -> σ(z * W₂ + w₂₀)
+        Dense(1, nhidden1, Flux.σ),  # x -> σ(x * W₁ + b₁)
+        Dense(nhidden1, 1, Flux.σ),  # z -> σ(z * W₂ + b₂)
     )
     model(xmore')
 
