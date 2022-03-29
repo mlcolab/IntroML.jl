@@ -7,14 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try
-            Base.loaded_modules[Base.PkgId(
-                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
-                "AbstractPlutoDingetjes",
-            )].Bonds.initial_value
-        catch
-            b -> missing
-        end
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -149,7 +142,22 @@ Show loss contour: $show_contour_input
 """
 
 # ╔═╡ 876fa74c-9c30-4f0b-9a5b-82bb6597cd47
-g = [one, identity, sin, exp]
+g = [zero]
+
+# ╔═╡ 9049eeca-0db8-41d2-93ee-e0b4e445c9fd
+md"""
+We can think of ``g`` as defining a "vocabulary" of simple functions that can be used as components to construct our model.
+An expressive model will support a large vocabulary of functions.
+"""
+
+# ╔═╡ bf50534d-1c9a-439a-9922-262f64b83c1d
+let
+	plots = map(g) do gj
+		lex = latexify(gj(Symbolics.Sym{Real}(:x)); env=:raw)
+		plot(gj, 0, 1; linewidth=2, color=:orange, xlabel=L"x", ylabel=L"%$lex", label="")
+	end
+	plot(plots...; link=:both)
+end
 
 # ╔═╡ 06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
 md"""
@@ -207,7 +215,14 @@ We can think of each curve as a hypothesis, and the variability in the ensemble 
 """
 
 # ╔═╡ 2909ff18-e98b-4149-843f-1c4709cfbb37
-plot([exp (x -> -exp(x)) tanh]; layout=(2, 2), title=[L"e^x" L"-e^x" L"\tanh(x)"], label="")
+let
+	funs = [exp, x -> -exp(x), tanh]
+	plots = map(funs) do f
+		lex = latexify(f(Symbolics.Sym{Real}(:z)); env=:raw)
+		plot(f; xlabel=L"z", ylabel=L"%$lex", label="", lw=2)
+	end
+	plot(plots...; link=:both)
+end
 
 # ╔═╡ ed7cb5c1-528a-4356-80dd-b337107eaf1f
 md"""
@@ -272,50 +287,21 @@ Then we can write our model as a matrix multiplication:
 ```
 
 This particular notation is convenient as we progress to neural networks.
-A more convenient notation is to operate on the entire dataset ``x`` and replace the sum with a matrix multiplication:
 """
 
-# ╔═╡ 29e817d4-4583-4c54-8ecc-53bc3fcd7d39
-md"""
-## A quick $(html"<s>costume</s>") notation change!
-
-We've been writing our functions as operating on a single data point ``x_i`` at a time with a weighted sum.
-A more convenient notation is to operate on the entire dataset ``x`` and replace the sum with a matrix multiplication:
-
-```math
-\hat{f}(x; w) = w^\top g(x) = \sum_{j=0}^n w_j g_j(x)
-```
-
-Just like ``\hat{f}`` is now data-wise, so is ``g_j``.
-In our applications so far, ``w`` has been a vector, but if our output is not 1-dimensional, ``w`` could be a matrix.
-Lastly, when we apply a sigmoid ``\sigma`` to an array, we assume it's applied to each individual element:
-
-```math
-\sigma(z) = \begin{pmatrix}\sigma(z_1) \\ \sigma(z_2) \\ \vdots \end{pmatrix}
-```
-
-We've so far used all of the weights in the middle, but why not apply some weights, then a function, then apply more weights?
-In our matrix notation, this might look like
-
-```math
-\hat{f}(x) = \sigma(\sigma(x W_1) W_2)
-```
-"""
-
-# ╔═╡ 94a9846b-ff01-487d-aeac-ddd4ab81610c
-md"""
-## Neural Networks
-
-TO-DO: add architecture image, juxtaposed with formula.
-"""
+# ╔═╡ 24ae3af6-c654-4cf3-b07c-1984e5ec414d
+nhidden1_input = @bind nhidden1 Slider(0:10; show_value=true);
 
 # ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
 md"""
 ### Fitting 1D data with neural networks
-"""
 
-# ╔═╡ 24ae3af6-c654-4cf3-b07c-1984e5ec414d
-@bind nhidden1 Slider(1:10; show_value=true)
+Let's take the simple neural architecture with a single hidden layer displayed above and use it to fit the same classification data we fit in the linear regression example.
+
+Drag the slider to select the number of nodes in the hidden layer.
+
+Number of hidden nodes = $nhidden1_input
+"""
 
 # ╔═╡ ea518070-cc7d-4a33-b9fd-082f7f1aeca1
 md"""
@@ -328,7 +314,27 @@ For example, when we have two-dimensional data, such as points on a plane, we ha
 """
 
 # ╔═╡ 25daeeb2-1667-4ebf-993e-fc4d94a3e627
-@bind nhidden2 Slider(0:10; show_value=true)
+nhidden2_input = @bind nhidden2 Slider(0:10; show_value=true);
+
+# ╔═╡ 29fb4486-5605-438f-9b1a-a24a19b20c5e
+md"""
+To fit this data with a neural net, we can reuse the same architecture we defined above, only adding a second input feature.
+
+![](https://svgshare.com/i/fky.svg)
+
+Drag the slider to select the number of nodes in the hidden layer.
+
+Number of hidden nodes = $nhidden2_input
+"""
+
+# ╔═╡ a96569a4-4ab2-4681-ab4f-fae744a0a671
+md"""
+## Wrapping it up
+
+To recap, we explored approaches for adding and evaluating model complexity, which led us first to linear regression, then polynomial regression, then logistic regression, and finally to neural networks.
+
+Now it's your turn to train a neural net using TensorFlow Playground!
+"""
 
 # ╔═╡ 2cf7fd33-2fda-4311-b699-c8441181b292
 @register_symbolic Flux.σ(x)
@@ -724,11 +730,33 @@ We've so far used all of the weights in the middle, but why not apply some weigh
 That is, why not have two matrices of weights ``W_1`` and ``W_2``:
 
 ```math
-\hat{f}(x; W_1, W_2) = \sigma(W_2^\top \sigma(W_1^\top g(x))).
+\hat{f}(x; W_1, W_2) = \sigma(\sigma(g(x) W_1) W_2).
 ```
 
-It turns out that alternating application of linear operators (i.e. weighting and adding) and $(important("activation")) functions like our sigmoid is incredibly expressive.
+There's no good reason for us not to try this.
+In fact, it turns out that alternating application of linear operators (i.e. weighting and adding) and $(important("activation")) functions like our sigmoid is incredibly expressive.
 These are called $(important("neural networks")).
+"""
+
+# ╔═╡ 94a9846b-ff01-487d-aeac-ddd4ab81610c
+md"""
+## Neural Networks
+
+We teased that we can write a neural network as
+```math
+\hat{f}(x; W_1, W_2) = \sigma(\sigma(x W_1) W_2)
+```
+
+Note that if ``g(x) = \sigma(x W_1)``, then we have computed features that depend on weights, followed by a logistic regression.
+Training the network then also involves learning computed features that are useful for maximizing the loss.
+This is a very useful way to understand neural networks!
+
+It is more common to represent neural networks graphically: 
+![](https://svgshare.com/i/fmy.svg)
+
+Each node in the network corresponds to an input feature, computed feature, or output label.
+Each edge is a single weight in a weight matrix.
+The collection of all features before or after a single function evaluation are called $(important("layers")).
 """
 
 # ╔═╡ d8983a9d-1880-4dc4-9c17-23281767e0c2
@@ -900,11 +928,14 @@ let
     Random.seed!(32)
     c = Int.(ymore .> 1.2)
     data = [(xmore', c')]
-    model = Chain(
-        Dense(1, nhidden1, Flux.σ),  # x -> σ(x * W₁ + b₁)
-        Dense(nhidden1, 1, Flux.σ),  # z -> σ(z * W₂ + b₂)
-    )
-    model(xmore')
+	if nhidden1 == 0
+		model = Dense(1, 1, Flux.σ)
+	else
+	    model = Chain(
+	        Dense(1, nhidden1, Flux.σ),  # x -> σ(x * W₁ + b₁)
+	        Dense(nhidden1, 1, Flux.σ),  # z -> σ(z * W₂ + b₂)
+	    )
+	end
 
     w = Flux.params(model)
     loss(x, y) = Flux.Losses.mse(model(x), y)
@@ -913,8 +944,7 @@ let
         Flux.train!(loss, w, data, opt)
     end
     f_hat(x) = only(model(fill(x, 1, 1)))
-    equation = latexify(f_hat(Symbolics.Sym{Real}(:x)); fmt="%.2f", env=:raw)
-    plot_data(xmore, c; data_color=Int.(c), f_hat, equation)
+    plot_data(xmore, c; data_color=Int.(c), f_hat)
 end
 
 # ╔═╡ f6f3c9b7-dd9d-4f7b-9626-93534c15f199
@@ -3154,6 +3184,8 @@ version = "0.9.1+5"
 # ╠═ebec3bc7-3dfc-4925-96fd-cfb8422b26dd
 # ╠═876fa74c-9c30-4f0b-9a5b-82bb6597cd47
 # ╠═34bad558-e70f-4d46-a9ab-7acc6c89db7a
+# ╟─9049eeca-0db8-41d2-93ee-e0b4e445c9fd
+# ╠═bf50534d-1c9a-439a-9922-262f64b83c1d
 # ╟─06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
 # ╟─ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
 # ╠═b0cdc9d6-738a-4583-b821-052ada846d39
@@ -3196,18 +3228,19 @@ version = "0.9.1+5"
 # ╟─b53798f9-24c2-4def-ab6f-447a5d809865
 # ╠═90a42425-9f1b-464a-9b10-d0a25cc6717c
 # ╟─24b1008e-f038-4d3d-a7f0-43d4488387f4
-# ╠═3316bd55-0f83-48d1-8512-f9192953d716
-# ╠═29e817d4-4583-4c54-8ecc-53bc3fcd7d39
+# ╟─3316bd55-0f83-48d1-8512-f9192953d716
 # ╟─5505fc32-1e46-4256-831c-d1b94d1e946c
-# ╠═94a9846b-ff01-487d-aeac-ddd4ab81610c
-# ╠═d2e5bde1-8c65-494f-8944-b16dec6ab193
+# ╟─94a9846b-ff01-487d-aeac-ddd4ab81610c
+# ╟─d2e5bde1-8c65-494f-8944-b16dec6ab193
 # ╠═24ae3af6-c654-4cf3-b07c-1984e5ec414d
 # ╠═655c8b62-e180-41e6-a3b5-7317cdc76f73
 # ╟─ea518070-cc7d-4a33-b9fd-082f7f1aeca1
 # ╠═82a245fa-6e02-41f4-bba4-769863a896db
 # ╠═dda5a074-3f7b-46dd-bc4b-cb05117ec425
+# ╟─29fb4486-5605-438f-9b1a-a24a19b20c5e
 # ╠═25daeeb2-1667-4ebf-993e-fc4d94a3e627
 # ╠═f52b2954-6edb-48cc-8dc9-94a4ef613012
+# ╟─a96569a4-4ab2-4681-ab4f-fae744a0a671
 # ╠═2cf7fd33-2fda-4311-b699-c8441181b292
 # ╠═805d2824-86cc-45bd-88b0-e6e14d9fde48
 # ╠═10b73d22-cf2a-479c-84b6-6a63a694f398
