@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -16,23 +23,21 @@ end
 
 # ╔═╡ ef43aef6-80ec-4976-91e6-84a74d29a83e
 begin
-    using PlutoUI,
-        Random,
-        StatsPlots,
-        LinearAlgebra,
+    using DataFrames,
         Flux,
-        Turing,
+        LinearAlgebra,
+        Latexify,
         LaTeXStrings,
-        DataFrames,
+        LogExpFunctions,
         Optim,
-        LogExpFunctions
+        Plots,
+        PlutoUI,
+        Random,
+        Symbolics,
+        Turing
     using Turing: Flat
-    using Symbolics
-    using Latexify
+    Plots.theme(:default; msw=0, ms=3, lw=2, framestyle=:grid, guidefontsize=14)
 end
-
-# ╔═╡ bdd7422f-e733-4d2f-851b-be7b355b5088
-html"<button onclick='present()'>Presentation Mode</button><br>"
 
 # ╔═╡ 2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
 md"""
@@ -46,36 +51,10 @@ md"""
 It's useful to explore our data by plotting.
 """
 
-# ╔═╡ 8eb34f0c-166b-4973-bdea-2ae64e3d34aa
-w0_slider = @bind w0 Slider(-5:0.001:5; default=0.3, show_value=true);
-
-# ╔═╡ 0b719897-4515-46c3-830a-eaec4d1666a2
-md"""
-Now drag the slider until you've minimized the error.
-
-``w_0 = `` $w0_slider
-"""
-
 # ╔═╡ 21a16ac9-f83e-46e8-81a2-09f79aa17eae
 md"""
 Note: for this model, this particular error function is proportional to the sample variance of ``y``, so the value of ``w_0`` that minimizes the error (i.e. variance) is the sample mean of ``y``!
 """
-
-# ╔═╡ 670bb91c-5b84-4e93-8288-90734f92b4f2
-w1_slider = @bind w1 Slider(-10:0.01:10; default=-3, show_value=true);
-
-# ╔═╡ 604d54f0-d815-451f-8abf-e444a7834a66
-w0_slider2 = @bind w0_2 Slider(-5:0.001:5; default=0.3, show_value=true);
-
-# ╔═╡ b657b5fe-af35-46e9-93c7-f897e7b22ddc
-md"""
-Because we have two weights, we can plot the combination of weights on a 2D grid with a readout of the loss and just move the values around until the loss is minimized:
-
-``w_0 =`` $w0_slider2 ``\quad`` ``w_1 =`` $w1_slider
-"""
-
-# ╔═╡ 050548ce-a62e-43e7-bb6a-e96a2f874f55
-f_hat_line(x) = w0_2 + w1 * x
 
 # ╔═╡ 67486053-5971-406b-8680-0d80803d797a
 line_trace_manual = [
@@ -115,9 +94,6 @@ let
     )
 end
 
-# ╔═╡ dea5bba1-54a6-45a3-b155-de295aecd307
-Base.vect.(line_trace_manual[1])
-
 # ╔═╡ 7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
 md"""
 ### Making the computer learn step-by-step
@@ -129,35 +105,11 @@ Second, coordinate descent fits 1 parameter at a time, when ideally we would fit
 How can we automate the computer doing this for us?
 """
 
-# ╔═╡ 223cefe4-1ead-4325-af32-2d59504e466b
-show_contour_input = @bind show_contour CheckBox(; default=false)
-
-# ╔═╡ 2eb005a3-f5b2-4216-b56f-e25157b8c33c
-md"""
-Let's overlay a computer-generated trajectory on our manual one.
-Can you tell what the computer is doing?
-What about if you view the contour of the loss function?
-
-Show loss contour: $show_contour_input
-"""
-
-# ╔═╡ 876fa74c-9c30-4f0b-9a5b-82bb6597cd47
-g = [zero]
-
 # ╔═╡ 9049eeca-0db8-41d2-93ee-e0b4e445c9fd
 md"""
 We can think of ``g`` as defining a "vocabulary" of simple functions that can be used as components to construct our model.
-An expressive model will support a large vocabulary of functions.
+An large vocabulary of functions enables the model to be more expressive.
 """
-
-# ╔═╡ bf50534d-1c9a-439a-9922-262f64b83c1d
-let
-	plots = map(g) do gj
-		lex = latexify(gj(Symbolics.Sym{Real}(:x)); env=:raw)
-		plot(gj, 0, 1; linewidth=2, color=:orange, xlabel=L"x", ylabel=L"%$lex", label="")
-	end
-	plot(plots...; link=:both)
-end
 
 # ╔═╡ 06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
 md"""
@@ -216,12 +168,12 @@ We can think of each curve as a hypothesis, and the variability in the ensemble 
 
 # ╔═╡ 2909ff18-e98b-4149-843f-1c4709cfbb37
 let
-	funs = [exp, x -> -exp(x), tanh]
-	plots = map(funs) do f
-		lex = latexify(f(Symbolics.Sym{Real}(:z)); env=:raw)
-		plot(f; xlabel=L"z", ylabel=L"%$lex", label="", lw=2)
-	end
-	plot(plots...; link=:both)
+    funs = [exp, x -> -exp(x), tanh]
+    plots = map(funs) do f
+        lex = latexify(f(Symbolics.Sym{Real}(:z)); env=:raw)
+        plot(f; xlabel=L"z", ylabel=L"%$lex", label="")
+    end
+    plot(plots...; link=:both)
 end
 
 # ╔═╡ ed7cb5c1-528a-4356-80dd-b337107eaf1f
@@ -238,11 +190,8 @@ Alternatively, they could just report back the most probable class ``c``.
 In this case, we could interpret the class labels as absolutely confident probabilities, i.e. ``c==1`` could be interpreted as ``p(y > t) = 1``, while ``c=0`` could be interpreted as ``p(y > t) = 0``.
 """
 
-# ╔═╡ 0bbb588b-d2cd-4956-bc78-4560058605ed
-thresh_input = @bind thresh Slider(-4:0.01:4; default=0, show_value=true);
-
-# ╔═╡ 1e12834c-4b29-41db-ab1f-d93db62c8341
-md"``t = ``$thresh_input"
+# ╔═╡ 99f04e24-e70f-422b-afae-6438877b99c0
+npoints_input
 
 # ╔═╡ dfebe8a3-fbe5-4381-bce5-1cd403a7b365
 plot(
@@ -289,20 +238,6 @@ Then we can write our model as a matrix multiplication:
 This particular notation is convenient as we progress to neural networks.
 """
 
-# ╔═╡ 24ae3af6-c654-4cf3-b07c-1984e5ec414d
-nhidden1_input = @bind nhidden1 Slider(0:10; show_value=true);
-
-# ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
-md"""
-### Fitting 1D data with neural networks
-
-Let's take the simple neural architecture with a single hidden layer displayed above and use it to fit the same classification data we fit in the linear regression example.
-
-Drag the slider to select the number of nodes in the hidden layer.
-
-Number of hidden nodes = $nhidden1_input
-"""
-
 # ╔═╡ ea518070-cc7d-4a33-b9fd-082f7f1aeca1
 md"""
 ### Fitting 2D data with neural networks
@@ -311,20 +246,6 @@ Now that we have a generic framework for constructing neural networks, we can do
 For example, when we have two-dimensional data, such as points on a plane, we have two features.
 
 #### The data
-"""
-
-# ╔═╡ 25daeeb2-1667-4ebf-993e-fc4d94a3e627
-nhidden2_input = @bind nhidden2 Slider(0:10; show_value=true);
-
-# ╔═╡ 29fb4486-5605-438f-9b1a-a24a19b20c5e
-md"""
-To fit this data with a neural net, we can reuse the same architecture we defined above, only adding a second input feature.
-
-![](https://svgshare.com/i/fky.svg)
-
-Drag the slider to select the number of nodes in the hidden layer.
-
-Number of hidden nodes = $nhidden2_input
 """
 
 # ╔═╡ a96569a4-4ab2-4681-ab4f-fae744a0a671
@@ -352,16 +273,131 @@ x2, c2 = let
 end;
 
 # ╔═╡ 82a245fa-6e02-41f4-bba4-769863a896db
-DataFrame(
-    "x[1]" => round.(x2[:, 1]; digits=2), "x[2]" => round.(x2[:, 2]; digits=2), "c" => c2
-)
+round.(DataFrame("x" => x2[:, 1], "x[2]" => x2[:, 2], "c" => c2); digits=2)
 
 # ╔═╡ dda5a074-3f7b-46dd-bc4b-cb05117ec425
 let
     scatter(
-        x2[:, 1], x2[:, 2]; color=c2 .+ 1, legend=false, xlabel=L"x_1", ylabel=L"x_2", msw=0
+        x2[:, 1], x2[:, 2]; group=c2, label=[L"c=0" L"c=1"], xlabel=L"x_1", ylabel=L"x_2"
     )
 end
+
+# ╔═╡ 5b237453-472f-414e-95e0-f44e980ea93a
+md"""
+# Utilities
+
+This section contains data generation, utility functions and UI elements used in the above notebook.
+"""
+
+# ╔═╡ f75ad936-8c06-4e00-92d7-1f86532c0072
+TableOfContents()
+
+# ╔═╡ c75744a0-3c3f-4042-a796-6cbd9ec11195
+md"""
+## UI elements
+
+This section contains UI elements and variables they are bound to.
+"""
+
+# ╔═╡ 2cc52188-b262-4f65-b042-ad94d90523d8
+begin
+    w0_input = @bind w0 Slider(-5:0.001:5; default=0.3, show_value=true)
+    w1_input = @bind w1 Slider(-10:0.01:10; default=-3, show_value=true)
+    w0_input2 = @bind w0_2 Slider(-5:0.001:5; default=0.3, show_value=true)
+    g_input = @bind g MultiSelect(
+        [
+            one => "1",
+            identity => "x",
+            (x -> x^2) => "x²",
+            sin => "sin(x)",
+            cos => "cos(x)",
+            tan => "tan(x)",
+            exp => "exp(x)",
+        ];
+        size=5,
+        default=Function[one],
+    )
+    max_order_input = @bind max_order NumberField(0:100; default=0)
+    show_contour_input = @bind show_contour CheckBox(; default=false)
+    thresh_input = @bind thresh Slider(-4:0.01:4; default=0, show_value=true)
+    nhidden1_input = @bind nhidden1 Slider(0:10; show_value=true)
+    nhidden2_input = @bind nhidden2 Slider(0:10; show_value=true)
+end;
+
+# ╔═╡ 0b719897-4515-46c3-830a-eaec4d1666a2
+md"""
+Now drag the slider until you've minimized the error.
+
+``w_0 = `` $w0_input
+"""
+
+# ╔═╡ b657b5fe-af35-46e9-93c7-f897e7b22ddc
+md"""
+Because we have two weights, we can plot the combination of weights on a 2D grid with a readout of the loss and just move the values around until the loss is minimized:
+
+``w_0 =`` $w0_input ``\quad`` ``w_1 =`` $w1_input
+"""
+
+# ╔═╡ 050548ce-a62e-43e7-bb6a-e96a2f874f55
+f_hat_line(x) = w0_2 + w1 * x
+
+# ╔═╡ 2eb005a3-f5b2-4216-b56f-e25157b8c33c
+md"""
+Let's overlay a computer-generated trajectory on our manual one.
+Can you tell what the computer is doing?
+What about if you view the contour of the loss function?
+
+Show loss contour: $show_contour_input
+"""
+
+# ╔═╡ bf50534d-1c9a-439a-9922-262f64b83c1d
+let
+    plots = map(g) do gj
+        lex = latexify(gj(Symbolics.Sym{Real}(:x)); env=:raw)
+        plot(gj, 0, 1; color=:orange, xlabel=L"x", ylabel=L"%$lex", label="")
+    end
+    plot(plots...; link=:both)
+end
+
+# ╔═╡ b0cdc9d6-738a-4583-b821-052ada846d39
+max_order_input
+
+# ╔═╡ 06dee467-1f54-48e1-908d-8e4c9028a748
+max_order_input
+
+# ╔═╡ a5733d6d-3025-41dc-b1d9-03174729399b
+max_order_input
+
+# ╔═╡ efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
+max_order_input
+
+# ╔═╡ e2890775-2e29-4244-adac-c37f8f2a8a8e
+max_order_input
+
+# ╔═╡ 1e12834c-4b29-41db-ab1f-d93db62c8341
+md"``t = ``$thresh_input"
+
+# ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
+md"""
+### Fitting 1D data with neural networks
+
+Let's take the simple neural architecture with a single hidden layer displayed above and use it to fit the same classification data we fit in the linear regression example.
+
+Drag the slider to select the number of nodes in the hidden layer.
+
+Number of hidden nodes = $nhidden1_input
+"""
+
+# ╔═╡ 29fb4486-5605-438f-9b1a-a24a19b20c5e
+md"""
+To fit this data with a neural net, we can reuse the same architecture we defined above, only adding a second input feature.
+
+$(PlutoUI.Resource("https://svgshare.com/i/fky.svg", :width=>450))
+
+Drag the slider to select the number of nodes in the hidden layer.
+
+Number of hidden nodes = $nhidden2_input
+"""
 
 # ╔═╡ f52b2954-6edb-48cc-8dc9-94a4ef613012
 let
@@ -390,55 +426,13 @@ let
         env=:raw,
     )
     equation = L"%$lex"
-    p = contourf(0:0.01:1, 0:0.01:1, f_hat; color=:coolwarm, linewidth=0, clim=(0, 1))
-    scatter!(p, x2[:, 1], x2[:, 2]; color=c2 .+ 1, label="")
+    p = contourf(
+        -0.01:0.01:1.01, -0.01:0.01:1.01, f_hat; color=:coolwarm, lw=0, clim=(0, 1)
+    )
+    scatter!(p, x2[:, 1], x2[:, 2]; color=c2 .+ 1, group=c2, label=[L"c=0" L"c=1"], msw=0.5)
     annotate!(p, [(0, 1.06, (equation, :left, :top, 10))])
     plot!(; xlabel=L"x_1", ylabel=L"x_2")
 end
-
-# ╔═╡ 5b237453-472f-414e-95e0-f44e980ea93a
-md"""
-# Utilities
-
-This section contains data generation, utility functions and UI elements used in the above notebook.
-"""
-
-# ╔═╡ f75ad936-8c06-4e00-92d7-1f86532c0072
-TableOfContents()
-
-# ╔═╡ c75744a0-3c3f-4042-a796-6cbd9ec11195
-md"""
-## UI elements
-
-This section contains UI elements and variables they are bound to.
-"""
-
-# ╔═╡ 2cc52188-b262-4f65-b042-ad94d90523d8
-npoints_input = @bind npoints NumberField(1:1_000; default=10);
-
-# ╔═╡ f32db22e-d111-4bf5-9989-a698b0d22626
-npoints_input
-
-# ╔═╡ 99f04e24-e70f-422b-afae-6438877b99c0
-npoints_input
-
-# ╔═╡ 4b98bd17-de33-4648-b737-6b175905b2c7
-max_order_input = @bind max_order NumberField(0:100; default=0);
-
-# ╔═╡ b0cdc9d6-738a-4583-b821-052ada846d39
-max_order_input
-
-# ╔═╡ 06dee467-1f54-48e1-908d-8e4c9028a748
-max_order_input
-
-# ╔═╡ a5733d6d-3025-41dc-b1d9-03174729399b
-max_order_input
-
-# ╔═╡ efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
-max_order_input
-
-# ╔═╡ e2890775-2e29-4244-adac-c37f8f2a8a8e
-max_order_input
 
 # ╔═╡ b176823e-b8b5-413d-87b1-90d7efa0e377
 important(text) = HTML("""<span style="color:magenta"><strong>$text</strong></span>""")
@@ -491,7 +485,7 @@ Once we fix the value of ``w_0``, it is called a $(important("trained model")).
 Training is just the process of setting ``w_0``.
 Drag the slider below to adjust ``w_0``.
 
-``w_0=`` $w0_slider
+``w_0=`` $w0_input
 
 Which fit is "best"?
 """
@@ -524,7 +518,7 @@ This model now has two degrees of freedom, which we can arrange in a $(important
 Drag the two sliders below to minimize the loss.
 How low can you go?
 
-``w_0 = `` $w0_slider2 ``\quad w_1=`` $w1_slider
+``w_0 = `` $w0_input ``\quad w_1=`` $w1_input
 """
 
 # ╔═╡ def60ead-a40b-4376-82cd-a77455f6b942
@@ -568,7 +562,7 @@ Note that if ``g_j`` is a nonlinear function of ``x``, then ``\hat{f}`` is a non
 
 Let's try guessing useful scalar functions to add to ``g`` below.
 
-Hint: `[one, identity]` is equivalent to fitting the line. 
+Hint: ``\begin{bmatrix}1 \\ x\end{bmatrix}`` is equivalent to fitting the line with slope. 
 """
 
 # ╔═╡ ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
@@ -751,8 +745,8 @@ Note that if ``g(x) = \sigma(x W_1)``, then we have computed features that depen
 Training the network then also involves learning computed features that are useful for maximizing the loss.
 This is a very useful way to understand neural networks!
 
-It is more common to represent neural networks graphically: 
-![](https://svgshare.com/i/fmy.svg)
+It is more common to represent neural networks graphically:
+$(PlutoUI.Resource("https://svgshare.com/i/fmy.svg", :width=>450))
 
 Each node in the network corresponds to an input feature, computed feature, or output label.
 Each edge is a single weight in a weight matrix.
@@ -783,7 +777,6 @@ function plot_data!(
     x,
     y;
     xrange=(0, 1),
-    f_actual=nothing,
     f_hat=nothing,
     f_draws=nothing,
     show_residuals=false,
@@ -791,12 +784,9 @@ function plot_data!(
     equation=nothing,
 )
     if show_residuals && f_hat !== nothing
-        sticks!(p, x, y; fillrange=f_hat.(x), color=:red)
+        sticks!(p, x, y; fillrange=f_hat.(x), color=:red, lw=1)
     end
-    scatter!(p, x, y; xlabel=L"x", ylabel=L"y", color=data_color, msw=0, ms=3)
-    if f_actual !== nothing
-        plot!(p, f_actual, xrange...; color=:green, lw=2)
-    end
+    scatter!(p, x, y; xlabel=L"x", ylabel=L"y", color=data_color)
     if f_draws !== nothing
         for fi in f_draws
             plot!(p, fi, xrange...; color=:orange, lw=1, label="", alpha=0.2)
@@ -805,12 +795,12 @@ function plot_data!(
     if f_hat !== nothing
         # hack to give the fit a white border
         plot!(p, f_hat, xrange...; color=:white, lw=2.5, label="")
-        plot!(p, f_hat, xrange...; color=:orange, lw=2, label="")
+        plot!(p, f_hat, xrange...; color=:orange, label="")
     end
     if equation !== nothing
         xmin, xmax = xlims(p)
         ymin, ymax = ylims(p)
-        xmin = xmin + (xmax - xmin) * 0.01
+        xmin = xmin + (xmax - xmin) * 0.015
         ymax = ymax - (ymax - ymin) * 0.01
         annotate!(p, [(xmin, ymax, (equation, :left, :top))])
     end
@@ -849,23 +839,18 @@ x = collect(range(0, 1; length=ndata))
 # ╔═╡ 01af74cf-172d-4561-a7d9-6131a22b4161
 y = generate_data(f, x, error_actual; rng=MersenneTwister(data_seed))
 
-# ╔═╡ ff087f04-110c-4658-bafd-f5ec46672c92
-DataFrame(; x=round.(x; digits=2), y=round.(y; digits=2))
+# ╔═╡ a1ca71d8-2b2c-48de-8088-3cc32135fe5a
+round.(DataFrame(; x, y); digits=2)
 
 # ╔═╡ 1b4812d4-3879-4a79-a95d-20cad2959f5c
 plot_data(x, y)
-
-# ╔═╡ 72198269-d070-493f-92eb-36135692ca8f
-plot_data(x, y; f_hat=x -> w0, show_residuals=true)
 
 # ╔═╡ 5198cd41-f534-408c-8318-0787b4d04ae0
 loss_line = error(f_hat_line, x, y)
 
 # ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
 let
-    scatter(
-        [w0_2], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, msw=0, label=""
-    )
+    scatter([w0_2], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
     plot!(; title="\$ E = $(round(loss_line; digits=2)) \$", xlabel=L"w_0", ylabel=L"w_1")
 end
 
@@ -886,7 +871,7 @@ end
 ytest = generate_data(f, x, error_actual; rng=MersenneTwister(data_test_seed))
 
 # ╔═╡ a2e8fdca-7f23-4f94-8b94-502ff29500bc
-xmore = collect(range(0, 1; length=npoints))
+xmore = collect(range(0, 1; length=50))
 
 # ╔═╡ 072bf511-749d-421b-8e56-d706da88f031
 ymore = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_seed))
@@ -928,14 +913,14 @@ let
     Random.seed!(32)
     c = Int.(ymore .> 1.2)
     data = [(xmore', c')]
-	if nhidden1 == 0
-		model = Dense(1, 1, Flux.σ)
-	else
-	    model = Chain(
-	        Dense(1, nhidden1, Flux.σ),  # x -> σ(x * W₁ + b₁)
-	        Dense(nhidden1, 1, Flux.σ),  # z -> σ(z * W₂ + b₂)
-	    )
-	end
+    if nhidden1 == 0
+        model = Dense(1, 1, Flux.σ)
+    else
+        model = Chain(
+            Dense(1, nhidden1, Flux.σ),  # x -> σ(x * W₁ + b₁)
+            Dense(nhidden1, 1, Flux.σ),  # z -> σ(z * W₂ + b₂)
+        )
+    end
 
     w = Flux.params(model)
     loss(x, y) = Flux.Losses.mse(model(x), y)
@@ -944,7 +929,7 @@ let
         Flux.train!(loss, w, data, opt)
     end
     f_hat(x) = only(model(fill(x, 1, 1)))
-    plot_data(xmore, c; data_color=Int.(c), f_hat)
+    plot_data(xmore, c; data_color=c .+ 1, f_hat)
 end
 
 # ╔═╡ f6f3c9b7-dd9d-4f7b-9626-93534c15f199
@@ -1009,6 +994,12 @@ begin
     end
 end;
 
+# ╔═╡ 72198269-d070-493f-92eb-36135692ca8f
+let
+    equation = as_latex(PolyModel([w0]); digits=3)
+    plot_data(x, y; f_hat=x -> w0, show_residuals=true, equation)
+end
+
 # ╔═╡ 288aa7d7-8785-4f55-95e6-409e2ceb203a
 let
     f_hat(x) = w0
@@ -1035,7 +1026,6 @@ let
         last.(line_trace);
         seriestype=:scatterpath,
         ms=2,
-        msw=0,
         markercolor=:orange,
         color=:red,
         label="computer",
@@ -1050,6 +1040,7 @@ let
         (w0, w1) -> obj([w0, w1]);
         levels=100,
         alpha=show_contour * 0.5,
+        lw=1,
         color=:greys,
         colorbar=false,
     )
@@ -1073,14 +1064,12 @@ let
     )
 end
 
-# ╔═╡ 3b7fe147-ea94-422f-a943-6f3bd577edf1
-f_hat_poly = fit!(PolyModel(max_order), x, y)
-
 # ╔═╡ fc64996f-54ba-4c7a-8cfb-21133cec1fbe
 let
-    err = round(error(f_hat_poly, x, y); digits=2)
-    equation = as_latex(f_hat_poly)
-    p = plot_data(x, y; f_hat=x -> f_hat_poly(x), show_residuals=true, equation)
+    f_hat = fit!(PolyModel(max_order), x, y)
+    err = round(error(f_hat, x, y); digits=2)
+    equation = as_latex(f_hat)
+    p = plot_data(x, y; f_hat=x -> f_hat(x), show_residuals=true, equation)
     plot!(p; title="\$E = $err \$")
 end
 
@@ -1096,23 +1085,21 @@ end
 
 # ╔═╡ aa7b8b58-f959-47de-84d7-8c9cf3ad96be
 let
-    p = plot_data(
-        x, ytest; f_hat=x -> f_hat_poly(x), data_color=:magenta, show_residuals=true
-    )
+    f_hat = fit!(PolyModel(max_order), x, y)
+    p = plot_data(x, ytest; f_hat=x -> f_hat(x), data_color=:magenta, show_residuals=true)
     plot_data!(p, x, y)
     max_orders = 0:max_order
     rmse_values = map(max_orders) do n
         m = fit!(PolyModel(n), x, y)
         return error_rms(m, x, y), error_rms(m, x, ytest)
     end
-    p2 = plot(max_orders, first.(rmse_values); color=:blue, lw=2, label="training")
-    plot!(p2, max_orders, last.(rmse_values); color=:magenta, lw=2, label="validation")
+    p2 = plot(max_orders, first.(rmse_values); color=:blue, label="training")
+    plot!(p2, max_orders, last.(rmse_values); color=:magenta, label="validation")
     scatter!(
         p2,
         [max_order],
         [rmse_values[max_order + 1]...]';
         color=[:blue :magenta],
-        msw=0,
         ms=6,
         label="",
     )
@@ -1149,14 +1136,13 @@ let
         m = fit!(PolyModel(n), x, y)
         return error_rms(m, x, y), error_rms(m, x, ytest)
     end
-    p2 = plot(max_orders, first.(rmse_values); color=:blue, lw=2, label="training")
-    plot!(p2, max_orders, last.(rmse_values); color=:magenta, lw=2, label="validation")
+    p2 = plot(max_orders, first.(rmse_values); color=:blue, label="training")
+    plot!(p2, max_orders, last.(rmse_values); color=:magenta, label="validation")
     scatter!(
         p2,
         [max_order],
         [rmse_values[max_order + 1]...]';
         color=[:blue :magenta],
-        msw=0,
         ms=5,
         label="",
     )
@@ -1170,24 +1156,21 @@ error_reg(m::PolyModel, x, y) = error(m, x, y) + sum(abs2, m.w) * m.λ / 2
 # ╔═╡ 645525f1-77cb-4b18-81df-3eafc0b4004e
 let
     λ = exp(logλ)
-    f_hat_poly = fit!(PolyModel(max_order, λ), x, y)
-    p = plot_data(
-        x, ytest; f_hat=x -> f_hat_poly(x), data_color=:magenta, show_residuals=true
-    )
+    f_hat = fit!(PolyModel(max_order, λ), x, y)
+    p = plot_data(x, ytest; f_hat=x -> f_hat(x), data_color=:magenta, show_residuals=true)
     plot_data!(p, x, y)
     max_orders = 0:max(10, max_order)
     rmse_values = map(max_orders) do n
         m = fit!(PolyModel(n, λ), x, y)
         return error_rms(m, x, y), error_rms(m, x, ytest)
     end
-    p2 = plot(max_orders, first.(rmse_values); color=:blue, lw=2, label="training")
-    plot!(p2, max_orders, last.(rmse_values); color=:magenta, lw=2, label="validation")
+    p2 = plot(max_orders, first.(rmse_values); color=:blue, label="training")
+    plot!(p2, max_orders, last.(rmse_values); color=:magenta, label="validation")
     scatter!(
         p2,
         [max_order],
         [rmse_values[max_order + 1]...]';
         color=[:blue :magenta],
-        msw=0,
         ms=5,
         label="",
     )
@@ -1246,7 +1229,7 @@ let
     obj(w) = error(PolyModel(w), x, y)
     w1 = [m.w[1] for m in draws]
     w2 = [m.w[2] for m in draws]
-    p = scatter(w1, w2; color=:orange, alpha=0.25, ms=3, msw=0)
+    p = scatter(w1, w2; color=:orange, alpha=0.25)
     contour!(
         p,
         -5:0.01:5,
@@ -1255,9 +1238,10 @@ let
         levels=100,
         color=:grey,
         colorbar=false,
+        lw=1,
     )
     f_hat = fit!(PolyModel(1), x, y)
-    scatter!(p, [f_hat.w[1]], [f_hat.w[2]]; color=:orange, markerstrokecolor=:white, ms=4)
+    scatter!(p, [f_hat.w[1]], [f_hat.w[2]]; color=:orange, msc=:white, msw=2, ms=4)
     plot!(
         p;
         xlims=(-4.1, 4.1),
@@ -1296,9 +1280,6 @@ begin
     compute_features(g, x) = map(gj -> gj(x), g)
 end
 
-# ╔═╡ ebec3bc7-3dfc-4925-96fd-cfb8422b26dd
-f_hat_g(x, w) = dot(w, compute_features(g, x))
-
 # ╔═╡ 34bad558-e70f-4d46-a9ab-7acc6c89db7a
 let
     w = solve_regression(compute_features(g, x), y)
@@ -1310,6 +1291,7 @@ let
     lex = latexify(f_hat_sym(Symbolics.Sym{Real}(:x)); env=:raw)
     annotate!(p, [(minimum(x), maximum(y), ("\$\\hat{f}(x)=$lex\$", :left, :top))])
     plot!(p; title="\$E = $err \$")
+    PlutoRunner.DivElement(; children=[md"``g(x) = `` $g_input", p])
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -1322,9 +1304,9 @@ Latexify = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-StatsPlots = "f3b207a7-027a-5e70-b257-86293d7955fd"
 Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 Turing = "fce5fe82-541a-59a6-adf8-730c64b5f9a0"
 
@@ -1335,8 +1317,8 @@ LaTeXStrings = "~1.3.0"
 Latexify = "~0.15.13"
 LogExpFunctions = "~0.3.10"
 Optim = "~1.6.2"
+Plots = "~1.27.4"
 PlutoUI = "~0.7.37"
-StatsPlots = "~0.14.33"
 Symbolics = "~4.3.1"
 Turing = "~0.21.1"
 """
@@ -1420,18 +1402,6 @@ version = "2.3.0"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
-
-[[deps.Arpack]]
-deps = ["Arpack_jll", "Libdl", "LinearAlgebra", "Logging"]
-git-tree-sha1 = "288d58589d4249a63095f3f41ece91bf34c32c19"
-uuid = "7d9fca2a-8960-54d3-9f78-7d1dccf2cb97"
-version = "0.5.0"
-
-[[deps.Arpack_jll]]
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "OpenBLAS_jll", "Pkg"]
-git-tree-sha1 = "4c31b0101997beb213a9e6c39116b052e73ca38c"
-uuid = "68821587-b530-5797-8361-c406ea357684"
-version = "3.8.0+0"
 
 [[deps.ArrayInterface]]
 deps = ["Compat", "IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
@@ -1536,12 +1506,6 @@ deps = ["ChainRulesCore", "LinearAlgebra", "Test"]
 git-tree-sha1 = "bf98fa45a0a4cee295de98d4c1462be26345b9a1"
 uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
 version = "0.1.2"
-
-[[deps.Clustering]]
-deps = ["Distances", "LinearAlgebra", "NearestNeighbors", "Printf", "SparseArrays", "Statistics", "StatsBase"]
-git-tree-sha1 = "75479b7df4167267d75294d14b58244695beb2ac"
-uuid = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
-version = "0.14.2"
 
 [[deps.CodecZlib]]
 deps = ["TranscodingStreams", "Zlib_jll"]
@@ -1648,12 +1612,6 @@ git-tree-sha1 = "bfc1187b79289637fa0ef6d4436ebdfe6905cbd6"
 uuid = "e2d170a0-9d28-54be-80f0-106bbe20a464"
 version = "1.0.0"
 
-[[deps.DataValues]]
-deps = ["DataValueInterfaces", "Dates"]
-git-tree-sha1 = "d88a19299eba280a6d062e135a43f00323ae70bf"
-uuid = "e7dc6d0d-1eca-5fa6-8ad6-5aecde8b7ea5"
-version = "0.4.13"
-
 [[deps.Dates]]
 deps = ["Printf"]
 uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
@@ -1684,12 +1642,6 @@ deps = ["IrrationalConstants", "LogExpFunctions", "NaNMath", "Random", "SpecialF
 git-tree-sha1 = "dd933c4ef7b4c270aacd4eb88fa64c147492acf0"
 uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
 version = "1.10.0"
-
-[[deps.Distances]]
-deps = ["LinearAlgebra", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "3258d0659f812acde79e8a74b11f17ac06d0ca04"
-uuid = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
-version = "0.10.7"
 
 [[deps.Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
@@ -1761,9 +1713,9 @@ version = "0.5.0"
 
 [[deps.Expat_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "ae13fcbc7ab8f16b0856729b050ef0c446aa3492"
+git-tree-sha1 = "bad72f730e9e91c08d9427d5e8db95478a3c323d"
 uuid = "2e619515-83b5-522b-bb60-26c02a35a201"
-version = "2.4.4+0"
+version = "2.4.8+0"
 
 [[deps.ExprTools]]
 git-tree-sha1 = "56559bbef6ca5ea0c0818fa5c90320398a6fbf8d"
@@ -1877,15 +1829,15 @@ version = "0.13.14"
 
 [[deps.GR]]
 deps = ["Base64", "DelimitedFiles", "GR_jll", "HTTP", "JSON", "Libdl", "LinearAlgebra", "Pkg", "Printf", "Random", "RelocatableFolders", "Serialization", "Sockets", "Test", "UUIDs"]
-git-tree-sha1 = "9f836fb62492f4b0f0d3b06f55983f2704ed0883"
+git-tree-sha1 = "af237c08bda486b74318c8070adb96efa6952530"
 uuid = "28b8d3ca-fb5f-59d9-8090-bfdbd6d07a71"
-version = "0.64.0"
+version = "0.64.2"
 
 [[deps.GR_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Cairo_jll", "FFMPEG_jll", "Fontconfig_jll", "GLFW_jll", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Libtiff_jll", "Pixman_jll", "Pkg", "Qt5Base_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "a6c850d77ad5118ad3be4bd188919ce97fffac47"
+git-tree-sha1 = "cd6efcf9dc746b06709df14e462f0a3fe0786b1e"
 uuid = "d2c73de3-f751-5644-a686-071e5b155ba9"
-version = "0.64.0+0"
+version = "0.64.2+0"
 
 [[deps.GeometryBasics]]
 deps = ["EarCut_jll", "IterTools", "LinearAlgebra", "StaticArrays", "StructArrays", "Tables"]
@@ -2318,12 +2270,6 @@ git-tree-sha1 = "13ecec3d52a409be2e8653516955ec58f1c5a847"
 uuid = "102ac46a-7ee4-5c85-9060-abc95bfdeaa3"
 version = "0.4.4"
 
-[[deps.MultivariateStats]]
-deps = ["Arpack", "LinearAlgebra", "SparseArrays", "Statistics", "StatsAPI", "StatsBase"]
-git-tree-sha1 = "7008a3412d823e29d370ddc77411d593bd8a3d03"
-uuid = "6f286f6a-111f-5878-ab1e-185364afe411"
-version = "0.9.1"
-
 [[deps.MutableArithmetics]]
 deps = ["LinearAlgebra", "SparseArrays", "Test"]
 git-tree-sha1 = "ba8c0f8732a24facba709388c74ba99dcbfdda1e"
@@ -2364,19 +2310,8 @@ git-tree-sha1 = "eda490d06b9f7c00752ee81cfa451efe55521e21"
 uuid = "c020b1a1-e9b0-503a-9c33-f039bfc54a85"
 version = "1.0.0"
 
-[[deps.NearestNeighbors]]
-deps = ["Distances", "StaticArrays"]
-git-tree-sha1 = "ded92de95031d4a8c61dfb6ba9adb6f1d8016ddd"
-uuid = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
-version = "0.4.10"
-
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
-
-[[deps.Observables]]
-git-tree-sha1 = "fe29afdef3d0c4a8286128d4e45cc50621b1e43d"
-uuid = "510215fc-4207-5dde-b226-833fc4488ee2"
-version = "0.4.0"
 
 [[deps.OffsetArrays]]
 deps = ["Adapt"]
@@ -2475,9 +2410,9 @@ version = "1.2.0"
 
 [[deps.Plots]]
 deps = ["Base64", "Contour", "Dates", "Downloads", "FFMPEG", "FixedPointNumbers", "GR", "GeometryBasics", "JSON", "Latexify", "LinearAlgebra", "Measures", "NaNMath", "Pkg", "PlotThemes", "PlotUtils", "Printf", "REPL", "Random", "RecipesBase", "RecipesPipeline", "Reexport", "Requires", "Scratch", "Showoff", "SparseArrays", "Statistics", "StatsBase", "UUIDs", "UnicodeFun", "Unzip"]
-git-tree-sha1 = "5f6e1309595e95db24342e56cd4dabd2159e0b79"
+git-tree-sha1 = "edec0846433f1c1941032385588fd57380b62b59"
 uuid = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-version = "1.27.3"
+version = "1.27.4"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
@@ -2673,12 +2608,6 @@ git-tree-sha1 = "0b4b7f1393cff97c33891da2a0bf69c6ed241fda"
 uuid = "6c6a2e73-6563-6170-7368-637461726353"
 version = "1.1.0"
 
-[[deps.SentinelArrays]]
-deps = ["Dates", "Random"]
-git-tree-sha1 = "6a2f7d70512d205ca8c7ee31bfa9f142fe74310c"
-uuid = "91c51154-3ec4-41a3-a24f-3f23e20d615c"
-version = "1.3.12"
-
 [[deps.Serialization]]
 uuid = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
@@ -2763,12 +2692,6 @@ git-tree-sha1 = "25405d7016a47cf2bd6cd91e66f4de437fd54a07"
 uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
 version = "0.9.16"
 
-[[deps.StatsPlots]]
-deps = ["AbstractFFTs", "Clustering", "DataStructures", "DataValues", "Distributions", "Interpolations", "KernelDensity", "LinearAlgebra", "MultivariateStats", "Observables", "Plots", "RecipesBase", "RecipesPipeline", "Reexport", "StatsBase", "TableOperations", "Tables", "Widgets"]
-git-tree-sha1 = "4d9c69d65f1b270ad092de0abe13e859b8c55cad"
-uuid = "f3b207a7-027a-5e70-b257-86293d7955fd"
-version = "0.14.33"
-
 [[deps.StructArrays]]
 deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
 git-tree-sha1 = "57617b34fa34f91d536eb265df67c2d4519b8b98"
@@ -2794,12 +2717,6 @@ version = "4.3.1"
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
-
-[[deps.TableOperations]]
-deps = ["SentinelArrays", "Tables", "Test"]
-git-tree-sha1 = "e383c87cf2a1dc41fa30c093b2a19877c83e1bc1"
-uuid = "ab02a1b2-a7df-11e8-156e-fb1833f50b87"
-version = "1.2.0"
 
 [[deps.TableTraits]]
 deps = ["IteratorInterfaceExtensions"]
@@ -2913,12 +2830,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "4528479aa01ee1b3b4cd0e6faef0e04cf16466da"
 uuid = "2381bf8a-dfd0-557d-9999-79630e7b1b91"
 version = "1.25.0+0"
-
-[[deps.Widgets]]
-deps = ["Colors", "Dates", "Observables", "OrderedCollections"]
-git-tree-sha1 = "505c31f585405fc375d99d02588f6ceaba791241"
-uuid = "cc8bc4a8-27d6-5769-a93b-9d913e69aa62"
-version = "0.6.5"
 
 [[deps.WoodburyMatrices]]
 deps = ["LinearAlgebra", "SparseArrays"]
@@ -3148,23 +3059,19 @@ version = "0.9.1+5"
 """
 
 # ╔═╡ Cell order:
-# ╟─bdd7422f-e733-4d2f-851b-be7b355b5088
 # ╟─2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
 # ╟─18198312-54c3-4b4f-b865-3a6a775ce483
-# ╠═ff087f04-110c-4658-bafd-f5ec46672c92
+# ╠═a1ca71d8-2b2c-48de-8088-3cc32135fe5a
 # ╟─31b1a0e4-216f-4c90-b16e-f542000c8aee
 # ╠═1b4812d4-3879-4a79-a95d-20cad2959f5c
 # ╟─48f03e74-1e25-41b8-a21c-fd810fadc2cf
 # ╟─cd49e0a5-4120-481a-965e-72e7bdaf867c
-# ╠═8eb34f0c-166b-4973-bdea-2ae64e3d34aa
 # ╠═72198269-d070-493f-92eb-36135692ca8f
 # ╟─4c7e53c5-1271-4acf-95cc-5345564d1b15
 # ╟─0b719897-4515-46c3-830a-eaec4d1666a2
 # ╠═288aa7d7-8785-4f55-95e6-409e2ceb203a
 # ╟─21a16ac9-f83e-46e8-81a2-09f79aa17eae
 # ╟─ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
-# ╠═670bb91c-5b84-4e93-8288-90734f92b4f2
-# ╠═604d54f0-d815-451f-8abf-e444a7834a66
 # ╠═345ae96b-92c2-4ac4-bfdf-302113627ffb
 # ╟─b657b5fe-af35-46e9-93c7-f897e7b22ddc
 # ╠═050548ce-a62e-43e7-bb6a-e96a2f874f55
@@ -3173,16 +3080,12 @@ version = "0.9.1+5"
 # ╟─def60ead-a40b-4376-82cd-a77455f6b942
 # ╠═67486053-5971-406b-8680-0d80803d797a
 # ╠═d1cd6a46-dc5b-4188-a891-703b50bce186
-# ╠═dea5bba1-54a6-45a3-b155-de295aecd307
 # ╟─7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
 # ╠═942f314e-927b-4371-8c83-83801c860b4d
-# ╟─223cefe4-1ead-4325-af32-2d59504e466b
 # ╟─2eb005a3-f5b2-4216-b56f-e25157b8c33c
 # ╠═6016a736-11da-4451-aa82-cc3045e782db
 # ╟─6f75889b-1c7f-4261-bf27-7c991ee9e414
 # ╟─74290eff-781b-44c9-8a90-96bffbe040df
-# ╠═ebec3bc7-3dfc-4925-96fd-cfb8422b26dd
-# ╠═876fa74c-9c30-4f0b-9a5b-82bb6597cd47
 # ╠═34bad558-e70f-4d46-a9ab-7acc6c89db7a
 # ╟─9049eeca-0db8-41d2-93ee-e0b4e445c9fd
 # ╠═bf50534d-1c9a-439a-9922-262f64b83c1d
@@ -3190,7 +3093,6 @@ version = "0.9.1+5"
 # ╟─ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
 # ╠═b0cdc9d6-738a-4583-b821-052ada846d39
 # ╠═fc64996f-54ba-4c7a-8cfb-21133cec1fbe
-# ╠═3b7fe147-ea94-422f-a943-6f3bd577edf1
 # ╟─1f1e9c9b-e5fa-41b1-852f-cadad703ee4b
 # ╠═e3dbe2f5-7e97-45b7-9b75-1acaf8f1031b
 # ╟─39414e5e-1256-4497-9738-e2ecdff62d9d
@@ -3201,7 +3103,6 @@ version = "0.9.1+5"
 # ╠═a5733d6d-3025-41dc-b1d9-03174729399b
 # ╟─a9163072-cad9-4b0b-b154-d315c6b68de4
 # ╟─c50f50f4-84a3-4a81-bacc-b8ce99d6b257
-# ╠═f32db22e-d111-4bf5-9989-a698b0d22626
 # ╠═efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
 # ╠═444e4eba-9b5a-4e37-8853-5d24c5c398ca
 # ╟─fe2c7c2b-63e3-4cbf-b432-b028ec599292
@@ -3219,7 +3120,6 @@ version = "0.9.1+5"
 # ╟─df8f0019-84b9-4309-ab16-4a909fa94e88
 # ╠═2909ff18-e98b-4149-843f-1c4709cfbb37
 # ╟─ed7cb5c1-528a-4356-80dd-b337107eaf1f
-# ╠═0bbb588b-d2cd-4956-bc78-4560058605ed
 # ╟─1e12834c-4b29-41db-ab1f-d93db62c8341
 # ╠═99f04e24-e70f-422b-afae-6438877b99c0
 # ╠═09877b51-c34c-4351-ab8d-0fbee76d5a1b
@@ -3232,13 +3132,11 @@ version = "0.9.1+5"
 # ╟─5505fc32-1e46-4256-831c-d1b94d1e946c
 # ╟─94a9846b-ff01-487d-aeac-ddd4ab81610c
 # ╟─d2e5bde1-8c65-494f-8944-b16dec6ab193
-# ╠═24ae3af6-c654-4cf3-b07c-1984e5ec414d
 # ╠═655c8b62-e180-41e6-a3b5-7317cdc76f73
 # ╟─ea518070-cc7d-4a33-b9fd-082f7f1aeca1
 # ╠═82a245fa-6e02-41f4-bba4-769863a896db
 # ╠═dda5a074-3f7b-46dd-bc4b-cb05117ec425
 # ╟─29fb4486-5605-438f-9b1a-a24a19b20c5e
-# ╠═25daeeb2-1667-4ebf-993e-fc4d94a3e627
 # ╠═f52b2954-6edb-48cc-8dc9-94a4ef613012
 # ╟─a96569a4-4ab2-4681-ab4f-fae744a0a671
 # ╠═2cf7fd33-2fda-4311-b699-c8441181b292
@@ -3247,9 +3145,8 @@ version = "0.9.1+5"
 # ╟─5b237453-472f-414e-95e0-f44e980ea93a
 # ╠═ef43aef6-80ec-4976-91e6-84a74d29a83e
 # ╠═f75ad936-8c06-4e00-92d7-1f86532c0072
-# ╟─c75744a0-3c3f-4042-a796-6cbd9ec11195
+# ╠═c75744a0-3c3f-4042-a796-6cbd9ec11195
 # ╠═2cc52188-b262-4f65-b042-ad94d90523d8
-# ╠═4b98bd17-de33-4648-b737-6b175905b2c7
 # ╠═b176823e-b8b5-413d-87b1-90d7efa0e377
 # ╟─d8983a9d-1880-4dc4-9c17-23281767e0c2
 # ╠═5e7bda42-0266-4498-906d-9aca8b6c4bf3
