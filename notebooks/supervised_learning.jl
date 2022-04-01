@@ -7,14 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try
-            Base.loaded_modules[Base.PkgId(
-                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
-                "AbstractPlutoDingetjes",
-            )].Bonds.initial_value
-        catch
-            b -> missing
-        end
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -43,17 +36,26 @@ end
 md"""
 # Supervised learning: One step at a time
 
-In this notebook, we slowly introduce supervised learning, along with basic machine learning concepts we encounter on the way.
+In this notebook, we slowly introduce [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning), along with basic machine learning concepts we encounter on the way.
+
+!!! note
+	This notebook is written using [Pluto](https://github.com/fonsp/Pluto.jl), a reactive notebook environment. If you're viewing this on the web, the interactive elements will be static, and this will not be as useful. Click "Edit or run this notebook" on the top right to find instructions for making it interactive. Note that because we load several heavy dependencies, Binder will likely not work.
 """
 
 # ╔═╡ 31b1a0e4-216f-4c90-b16e-f542000c8aee
 md"""
 It's useful to explore our data by plotting.
+
+!!! question
+	What would you guess ``f`` looks like?
+    How would your guess change if data points appeared in one of the white spaces?
 """
 
 # ╔═╡ 21a16ac9-f83e-46e8-81a2-09f79aa17eae
 md"""
-Note: for this model, this particular error function is proportional to the sample variance of ``y``, so the value of ``w_0`` that minimizes the error (i.e. variance) is the sample mean of ``y``!
+!!! note
+	For this model, this particular error function is proportional to the sample variance of ``y``, so the value of ``w_0`` that minimizes the error (i.e. variance) is the sample mean of ``y``!
+    When an article reports the sample mean value of observation, one way to interpret that is as a single-parameter model that models the observation as independent of any known or unknown features. 
 """
 
 # ╔═╡ 67486053-5971-406b-8680-0d80803d797a
@@ -75,14 +77,13 @@ line_trace_manual = [
 # ╔═╡ d1cd6a46-dc5b-4188-a891-703b50bce186
 let
     p = plot(; size=(550, 500))
-    plot!(p, first.(line_trace_manual), last.(line_trace_manual); color=:blue, label="")
+    plot!(p, first.(line_trace_manual), last.(line_trace_manual); color=:blue)
     scatter!(
         p,
         Base.vect.(line_trace_manual[begin])...;
         color=:black,
         marker=:rtriangle,
         ms=6,
-        label="",
     )
     plot!(
         p;
@@ -91,6 +92,7 @@ let
         aspect_ratio=1,
         xlabel=L"w_0",
         ylabel=L"w_1",
+		legend=false,
     )
 end
 
@@ -102,23 +104,24 @@ There are two problems with how we have been fitting parameters so far.
 First, it's manual.
 This won't scale to more than a few parameters.
 Second, coordinate descent fits 1 parameter at a time, when ideally we would fit all at the same time.
-How can we automate the computer doing this for us?
+
+The good news is that we can automate this process!
 """
 
 # ╔═╡ 9049eeca-0db8-41d2-93ee-e0b4e445c9fd
 md"""
 We can think of ``g`` as defining a "vocabulary" of simple functions that can be used as components to construct our model.
-An large vocabulary of functions enables the model to be more expressive.
+A large vocabulary of functions enables the model to be more expressive.
 """
 
 # ╔═╡ 06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
 md"""
 This approach of manually selecting features works well when:
-1. we already can guess quite a lot about the function without looking at the data
-2. The function is simple enough that a very small number of features can be linearly combined to approximate it
+1. we already can guess quite a lot about the function from domain expertise and intuition without looking at the data
+2. the function is simple enough that a very small number of features can be linearly combined to approximate it
 3. the data is small and simple enough that we can plot it and guess what features might be useful.
 
-Often in machine learning applications, we're not so lucky, so we need generic approaches to construct useful features.
+Often in machine learning applications, we're not so lucky, so we need generic approaches to construct useful computed features.
 """
 
 # ╔═╡ 1f1e9c9b-e5fa-41b1-852f-cadad703ee4b
@@ -126,43 +129,60 @@ md"""
 ### Choosing the right model
 
 We see that for low ``n``, we don't fit the data very well, but by ``n=3`` we get quite a good fit.
-By the time we reach ``n=9``, the model is so flexible, it's able to perfectly hit every data point, so that the loss is 0.
-As we increase ``n``, additional weights take on very large values, even though they cannot fit the data any better.
+By the time we reach ``n=9``, the model has the same number of free parameters as we have data points, so it's able to perfectly hit every data point and reach an error of 0.
+As we increase ``n`` even more, the values of the function between the data points become more extreme.
 
-Question: which model is best?
+Here are the trained models for 4 selected values of ``n``.
+
+!!! question
+	Which model is best?
+"""
+
+# ╔═╡ 267532b6-ba74-4e74-992a-6cabb03949a0
+md"""
+While at first, the error decreases for both the training and validation data, eventually validation error increases, while training error still decreases.
+The validation error is minimized for ``n=3``, so we might call models with ``n<3`` underfitted and models with ``n>3`` as overfitted.
+
+Let's see what happens with 5 times the amount of data.
+
+!!! question
+	Do you see any different behavior as ``n`` increases beyond 9?
+"""
+
+# ╔═╡ 3996d09f-c115-4097-b994-6f3f573912fc
+md"""
+The difference in training and validation error is less extreme for higher values of ``n``, and in fact, ``n=5`` is where we now minimize validation error.
+In general, as we collect more data, we have more information about the form of ``f``, so we can fit more complex models with less risk of overfitting.
+
+There are more sophisticated approaches we could take, including dividing the data into multiple sets of training and validation sets.
+This is called [cross-validation](https://en.wikipedia.org/wiki/Cross-validation_(statistics)), and we won't discuss it further here.
 """
 
 # ╔═╡ 6fb68c61-1ef0-4efc-bcbc-dd9d219c3ebb
 md"""
 ## Regularization
 
-It may seem a little strange that adding more weights can make the model worse, since the simpler model is contained within the more compplex one.
-One way to understand this is to look at the fitted values of the weights as we add more terms.
-"""
+It may seem a little strange that adding more weights can make the model worse, since the simpler model is contained within the more complex one.
+One way to understand this is to look at the fitted values of the weights as ``n`` increases.
 
-# ╔═╡ c50f50f4-84a3-4a81-bacc-b8ce99d6b257
-md"""
-Watch what happens as we increase the number of data points.
-We can increase the number of degrees of freedom of the model without getting the wild oscillations that we saw when the data was more sparse.
-However, this does not mean that our error on the test data continues to decrease.
-For 1000 data points, we find that the minimum ``E_\mathrm{RMS}`` is at ``n=5``.
+!!! question
+	What happens to the magnitude of the weights with increasing ``n``?
 """
-
-# ╔═╡ a2f40cbe-f46f-44c6-a81f-aae082c27c1a
-logλ_input = @bind logλ Slider([-Inf; -20:1:0]; default=-Inf, show_value=true)
 
 # ╔═╡ a2466cba-65ea-41a4-b222-c397614453b2
 md"""
 Think for a second about the effect of ``\lambda``.
 We increase its value because we *a priori* expect the wild oscillations to be unreasonable.
-That is, ``\lambda`` is one way to incorporate prior information (i.e. domain expertise or intuition) into our model.
+That is, ``\lambda`` is one way to incorporate prior information (i.e. domain expertise or intuition) about smoothness into our model.
 
 Wouldn't it be nice if there was a principled way to do that?
 """
 
 # ╔═╡ a1671960-9b0b-47f2-8d3a-74d67a122ce0
 md"""
-Since we're not interested in the ``w`` values themselves but rather the function they parameterize, another way to visualize this uncertainty is by plotting an ensemble of curves.
+In regression models, the weights are interpretable, but suppose we are not primarily interested in ``w`` but rather the function ``\hat{f}`` they parametrize.
+Since each sampled ``w`` defines a ``\hat{f}``, we could visualize the same distribution by plotting an ensemble of curves.
+
 We can think of each curve as a hypothesis, and the variability in the ensemble reflects the uncertainty we have about which hypothesis is most consistent with all of the information we have used.
 """
 
@@ -175,23 +195,6 @@ let
     end
     plot(plots...; link=:both)
 end
-
-# ╔═╡ ed7cb5c1-528a-4356-80dd-b337107eaf1f
-md"""
-## Regression for classification problems
-
-Suppose some expert looked at our ``y`` values and assigned a label to each depending on whether they were above or below some threshold ``t``.
-We can represent the two labels with a single binary variable ``c``, i.e. ``c=1`` when ``y > t`` and ``c = 0`` when ``y \le t``.
-
-Since the ``y`` values are noisy, the labeller may want to assign a less certain probability like ``p(y > t) = \frac{1}{2}`` for points near the threshold and either much higher or lower probabilities for values far from the threshold.
-Modeling these probabilities would be a different regression problem.
-
-Alternatively, they could just report back the most probable class ``c``.
-In this case, we could interpret the class labels as absolutely confident probabilities, i.e. ``c==1`` could be interpreted as ``p(y > t) = 1``, while ``c=0`` could be interpreted as ``p(y > t) = 0``.
-"""
-
-# ╔═╡ 99f04e24-e70f-422b-afae-6438877b99c0
-npoints_input
 
 # ╔═╡ dfebe8a3-fbe5-4381-bce5-1cd403a7b365
 plot(
@@ -238,6 +241,12 @@ Then we can write our model as a matrix multiplication:
 This particular notation is convenient as we progress to neural networks.
 """
 
+# ╔═╡ 6f2399db-24e7-4586-a93e-bdb38279470f
+md"""
+With about 3 or 4 hidden units, which corresponds to 10 or 15 parameters, we're able to model what we took 4 parameters to model with logistic regression.
+We potentially could reduce the number of parameters by spreading these units across more hidden layers, since nesting functions makes the model more expressive.
+"""
+
 # ╔═╡ ea518070-cc7d-4a33-b9fd-082f7f1aeca1
 md"""
 ### Fitting 2D data with neural networks
@@ -245,42 +254,23 @@ md"""
 Now that we have a generic framework for constructing neural networks, we can do the same thing for arbitrary numbers of features.
 For example, when we have two-dimensional data, such as points on a plane, we have two features.
 
-#### The data
+For this we need a new dataset.
+"""
+
+# ╔═╡ cc67a1d7-f195-4deb-9b39-22e06a75283d
+md"""
+!!! question
+	Could a logistic regression model fit this XOR-inspired data?
 """
 
 # ╔═╡ a96569a4-4ab2-4681-ab4f-fae744a0a671
 md"""
 ## Wrapping it up
 
-To recap, we explored approaches for adding and evaluating model complexity, which led us first to linear regression, then polynomial regression, then logistic regression, and finally to neural networks.
+To recap, we explored approaches for adding and evaluating model complexity, which led us first to linear regression, then polynomial regression, then logistic regression, and finally to simple neural networks.
 
-Now it's your turn to train a neural net using TensorFlow Playground!
+Now that you've built some intuition and familarity with the concepts, we recommend trying out [TensorFlow Playground](https://playground.tensorflow.org/#activation=sigmoid&batchSize=10&dataset=xor&regDataset=reg-plane&learningRate=0.03&regularizationRate=0.001&noise=0&networkShape=5&seed=0.54504&showTestData=false&discretize=false&percTrainData=50&x=true&y=true&xTimesY=false&xSquared=false&ySquared=false&cosX=false&sinX=false&cosY=false&sinY=false&collectStats=false&problem=classification&initZero=false&hideText=false)!
 """
-
-# ╔═╡ 2cf7fd33-2fda-4311-b699-c8441181b292
-@register_symbolic Flux.σ(x)
-
-# ╔═╡ 805d2824-86cc-45bd-88b0-e6e14d9fde48
-f2(x, y) = sinpi(2x) * sinpi(2y)
-
-# ╔═╡ 10b73d22-cf2a-479c-84b6-6a63a694f398
-x2, c2 = let
-    rng = MersenneTwister(92)
-    x = rand(rng, 400, 2)
-    z = f2.(x[:, 1], x[:, 2]) .+ randn.(rng) .* 0.1
-    c = Int.(z .> 0)
-    x, c
-end;
-
-# ╔═╡ 82a245fa-6e02-41f4-bba4-769863a896db
-round.(DataFrame("x" => x2[:, 1], "x[2]" => x2[:, 2], "c" => c2); digits=2)
-
-# ╔═╡ dda5a074-3f7b-46dd-bc4b-cb05117ec425
-let
-    scatter(
-        x2[:, 1], x2[:, 2]; group=c2, label=[L"c=0" L"c=1"], xlabel=L"x_1", ylabel=L"x_2"
-    )
-end
 
 # ╔═╡ 5b237453-472f-414e-95e0-f44e980ea93a
 md"""
@@ -292,150 +282,11 @@ This section contains data generation, utility functions and UI elements used in
 # ╔═╡ f75ad936-8c06-4e00-92d7-1f86532c0072
 TableOfContents()
 
-# ╔═╡ c75744a0-3c3f-4042-a796-6cbd9ec11195
-md"""
-## UI elements
-
-This section contains UI elements and variables they are bound to.
-"""
-
-# ╔═╡ 2cc52188-b262-4f65-b042-ad94d90523d8
-begin
-    w0_input = @bind w0 Slider(-5:0.001:5; default=0.3, show_value=true)
-    w1_input = @bind w1 Slider(-10:0.01:10; default=-3, show_value=true)
-    w0_input2 = @bind w0_2 Slider(-5:0.001:5; default=0.3, show_value=true)
-    g_input = @bind g MultiSelect(
-        [
-            one => "1",
-            identity => "x",
-            (x -> x^2) => "x²",
-            sin => "sin(x)",
-            cos => "cos(x)",
-            tan => "tan(x)",
-            exp => "exp(x)",
-        ];
-        size=5,
-        default=Function[one],
-    )
-    max_order_input = @bind max_order NumberField(0:100; default=0)
-    show_contour_input = @bind show_contour CheckBox(; default=false)
-    thresh_input = @bind thresh Slider(-4:0.01:4; default=0, show_value=true)
-    nhidden1_input = @bind nhidden1 Slider(0:10; show_value=true)
-    nhidden2_input = @bind nhidden2 Slider(0:10; show_value=true)
-end;
-
-# ╔═╡ 0b719897-4515-46c3-830a-eaec4d1666a2
-md"""
-Now drag the slider until you've minimized the error.
-
-``w_0 = `` $w0_input
-"""
-
-# ╔═╡ b657b5fe-af35-46e9-93c7-f897e7b22ddc
-md"""
-Because we have two weights, we can plot the combination of weights on a 2D grid with a readout of the loss and just move the values around until the loss is minimized:
-
-``w_0 =`` $w0_input ``\quad`` ``w_1 =`` $w1_input
-"""
-
-# ╔═╡ 050548ce-a62e-43e7-bb6a-e96a2f874f55
-f_hat_line(x) = w0_2 + w1 * x
-
-# ╔═╡ 2eb005a3-f5b2-4216-b56f-e25157b8c33c
-md"""
-Let's overlay a computer-generated trajectory on our manual one.
-Can you tell what the computer is doing?
-What about if you view the contour of the loss function?
-
-Show loss contour: $show_contour_input
-"""
-
-# ╔═╡ bf50534d-1c9a-439a-9922-262f64b83c1d
-let
-    plots = map(g) do gj
-        lex = latexify(gj(Symbolics.Sym{Real}(:x)); env=:raw)
-        plot(gj, 0, 1; color=:orange, xlabel=L"x", ylabel=L"%$lex", label="")
-    end
-    plot(plots...; link=:both)
-end
-
-# ╔═╡ b0cdc9d6-738a-4583-b821-052ada846d39
-max_order_input
-
-# ╔═╡ 06dee467-1f54-48e1-908d-8e4c9028a748
-max_order_input
-
-# ╔═╡ a5733d6d-3025-41dc-b1d9-03174729399b
-max_order_input
-
-# ╔═╡ efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
-max_order_input
-
-# ╔═╡ e2890775-2e29-4244-adac-c37f8f2a8a8e
-max_order_input
-
-# ╔═╡ 1e12834c-4b29-41db-ab1f-d93db62c8341
-md"``t = ``$thresh_input"
-
-# ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
-md"""
-### Fitting 1D data with neural networks
-
-Let's take the simple neural architecture with a single hidden layer displayed above and use it to fit the same classification data we fit in the linear regression example.
-
-Drag the slider to select the number of nodes in the hidden layer.
-
-Number of hidden nodes = $nhidden1_input
-"""
-
-# ╔═╡ 29fb4486-5605-438f-9b1a-a24a19b20c5e
-md"""
-To fit this data with a neural net, we can reuse the same architecture we defined above, only adding a second input feature.
-
-$(PlutoUI.Resource("https://svgshare.com/i/fky.svg", :width=>450))
-
-Drag the slider to select the number of nodes in the hidden layer.
-
-Number of hidden nodes = $nhidden2_input
-"""
-
-# ╔═╡ f52b2954-6edb-48cc-8dc9-94a4ef613012
-let
-    Random.seed!(28)
-    λ = 1e-6
-    data = [(x2', c2')]
-    if nhidden2 == 0
-        model = Dense(2, 1, Flux.σ)
-    else
-        model = Chain(
-            Dense(2, nhidden2, Flux.σ),  # x -> σ(x * W₁ + w₁₀)
-            Dense(nhidden2, 1, Flux.σ),  # z -> σ(z * W₂ + w₂₀)
-        )
-    end
-    w = Flux.params(model)
-    penalty() = sum(wi -> sum(abs2, wi), w) * λ
-    loss(x, y) = Flux.Losses.mse(model(x), y) + penalty()
-    opt = Flux.Optimise.ADAM()
-    for _ in 1:20_000
-        Flux.train!(loss, w, data, opt)
-    end
-    f_hat(x, y) = only(model([x, y]))
-    lex = latexify(
-        f_hat(Symbolics.Sym{Float64}(:x_1), Symbolics.Sym{Float64}(:x_2));
-        fmt="%.2f",
-        env=:raw,
-    )
-    equation = L"%$lex"
-    p = contourf(
-        -0.01:0.01:1.01, -0.01:0.01:1.01, f_hat; color=:coolwarm, lw=0, clim=(0, 1)
-    )
-    scatter!(p, x2[:, 1], x2[:, 2]; color=c2 .+ 1, group=c2, label=[L"c=0" L"c=1"], msw=0.5)
-    annotate!(p, [(0, 1.06, (equation, :left, :top, 10))])
-    plot!(; xlabel=L"x_1", ylabel=L"x_2")
-end
+# ╔═╡ 2cf7fd33-2fda-4311-b699-c8441181b292
+@register_symbolic Flux.σ(x)
 
 # ╔═╡ b176823e-b8b5-413d-87b1-90d7efa0e377
-important(text) = HTML("""<span style="color:magenta"><strong>$text</strong></span>""")
+important(text) = HTML("""<span style="color:orange"><strong>$text</strong></span>""")
 
 # ╔═╡ 18198312-54c3-4b4f-b865-3a6a775ce483
 md"""
@@ -455,7 +306,7 @@ y_i = f(x_i) + \mathrm{noise}.
 md"""
 ## Building a model
 
-Our goal is to build a function that approximates the unknown ``f``.
+In supervised learning, our goal is to build a function that approximates the unknown ``f``.
 We'll call this function ``\hat{f}`` (read "``f``-hat").
 ``\hat{f}`` is a $(important("model")).
 A model is just a function!
@@ -463,62 +314,7 @@ A model is just a function!
 In machine learning, when we evaluate ``\hat{f}`` on the raw features ``x``, the result is called $(important("inference")) or $(important("prediction")).
 Note that this is different from how the term "inference" is used in statistics!
 
-The first step to building any model is choosing its structure.
-"""
-
-# ╔═╡ cd49e0a5-4120-481a-965e-72e7bdaf867c
-md"""
-## The proverbial straight line
-
-### The horizontal line
-
-The simplest model we could choose for ``f`` is a horizontal line:
-
-````math
-\hat{f}(x_i; w) = w_0
-````
-
-This model has one free parameter ``w_0``.
-Written this way, this is called an $(important("untrained model")).
-Once we fix the value of ``w_0``, it is called a $(important("trained model")).
-
-Training is just the process of setting ``w_0``.
-Drag the slider below to adjust ``w_0``.
-
-``w_0=`` $w0_input
-
-Which fit is "best"?
-"""
-
-# ╔═╡ 4c7e53c5-1271-4acf-95cc-5345564d1b15
-md"""
-To say which fit is best, we need a measure of goodness of fit, or equivalently, of badness of fit.
-That is, we need a notion of error; the best model has the smallest error.
-This is called an $(important("error function")) or $(important("loss function")).
-Here, we choose a "sum-of-squares" error function:
-````math
-E(w) = \frac{1}{2}\sum_{i=1}^n (\hat{f}(x_i; w) - y_i)^2
-````
-
-``E(w) = 0`` when ``\hat{f}`` is perfectly able to predict ``y`` from ``x``.
-"""
-
-# ╔═╡ ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
-md"""
-### A line with slope
-
-For a better fit, let's give the line not only an intercept ``w_0`` but also also a slope ``w_1``:
-
-````math
-\hat{f}(x_i; w) = w_0 + w_1 x_i
-````
-
-This model now has two degrees of freedom, which we can arrange in a $(important("weight")) or $(important("internal parameter")) vector ``w = \begin{pmatrix}w_0 \\ w_1\end{pmatrix}``.
-
-Drag the two sliders below to minimize the loss.
-How low can you go?
-
-``w_0 = `` $w0_input ``\quad w_1=`` $w1_input
+The first step to building any model is choosing its structure, i.e. choosing the equation of the function.
 """
 
 # ╔═╡ def60ead-a40b-4376-82cd-a77455f6b942
@@ -529,78 +325,48 @@ Here I've saved a trajectory I took manually performing coordinate descent.
 
 # ╔═╡ 6f75889b-1c7f-4261-bf27-7c991ee9e414
 md"""
-Each step the computer takes is in a direction perpendicular to the level curve of the loss function at that point.
-This is the direction of steepest descent, which is the negative of the derivative of the loss function with respect to the weights (i.e. the gradient) at that point.
+Each step the computer takes is in a direction perpendicular to the level curve of the error function at that point.
+This is the direction of steepest descent, which is the negative of the derivative of the error function with respect to the weights (i.e. the gradient) at that point.
 
-For any set of weights, a modern machine learning package can automatically compute this direction using a method called $(important("backpropagation")) (or reverse-mode automatic differentiation), where it approximates how much each parameter is responsible for the error and should therefore change to minimize the error.
+For any set of weights, a modern machine learning package can automatically compute this direction using a method called $(important("backpropagation")) (AKA reverse-mode [automatic differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation)), where it approximates how much each parameter is responsible for the error and should therefore change to minimize the error.
 
 This isn't enough though to train the model.
 We also need to know how much to change each weight (i.e., how far to step).
+It seems intuitive that early on we might need larger steps to cover more terrain faster but in the end want to take smaller steps to avoid stepping too far.
+
 And, what if the direction of steepest descent leads to a local minimum where we'll be trapped?
 To train a model in practice, you need to also choose an $(important("optimizer")), that uses the derivatives to modify the weights for you.
 
-From now on, we will ignore backpropagation and the optimizer and treat them as a black box.
-"""
-
-# ╔═╡ 74290eff-781b-44c9-8a90-96bffbe040df
-md"""
-## Model comparison
-
-### Scaling the model up by trial-and-error
-
-Fitting the model gave us the best fitting line, but we think we can do better.
-To do this, we need to choose a different form for ``\hat{f}``.
-A very useful form we can take is as the weighted sum of simpler functions ``g_j``:
-
-```math
-\hat{f}(x_i; w) = w_1 g_1(x_i) + w_2 g_2(x_i) + \ldots + w_n g_n(x_i) = \sum_{j=1}^n w_j g_j(x_i).
-```
-
-Remember that we called ``x_i`` a raw feature.
-``g_j(x_i)`` is called a $(important("computed feature")), and so we now have ``n`` computed features for each initial raw features.
-Note that if ``g_j`` is a nonlinear function of ``x``, then ``\hat{f}`` is a nonlinear function of ``x`` but still a linear function of the weight vector ``w``.
-
-Let's try guessing useful scalar functions to add to ``g`` below.
-
-Hint: ``\begin{bmatrix}1 \\ x\end{bmatrix}`` is equivalent to fitting the line with slope. 
-"""
-
-# ╔═╡ ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
-md"""
-### Systematically scaling the model by adding terms
-
-One way we can systematically scale the model is by choosing as many computed features as we want from a family of functions ``g_j``.
-
-For example, we can let ``g_j(x) = x^j``, so that
-
-```math
-\hat{f}(x_i; w) = w_0 + w_1 x_1 + w_2 x^2 + \ldots + w_n x^n = \sum_{j=0}^n w_j x_i^j
-```
-
-Functions of the form of ``f`` are called $(important("polynomials")), and any smooth function can be exactly computed with infinite terms (i.e. ``n \to \infty``) or approximated with finite terms (by picking some manageable ``n``).
-This kind of model is called $(important("polynomial regression")).
-
-Our line with two degrees of freedom is the special case ``n=1``, though note again that here ``\hat{f}`` is still linear with respect to the weights ``w``.
+From now on, we will ignore backpropagation and the optimizer and treat them as a black box fitting method.
 """
 
 # ╔═╡ 39414e5e-1256-4497-9738-e2ecdff62d9d
 md"""
-The goal is to have a model that not only fits the data well but has also learned something about ``f``.
-That is, we want a model that also generalizes well to data that was not used to fit it.
+Again, to answer the question, we need to choose a notion of "bestness."
+
+The goal is to have a model that not only fits the data well but has also learned something about ``f``, which we can only access through observations or prior information.
+That is, we want a model that also generalizes well to data that we didn't use to fit it.
+
 We say that a model $(important("underfits")) if it does a poor job predicting the training data.
 Conversely, we say that a model $(important("overfits")) the training data if it fits the training data well but held-out data poorly.
 
-To check this for our models, we hold out a but a $(important("validation set")) ``(x_\mathrm{val}, y_\mathrm{val})``, data similar to ``(x, y)`` that we only use to validate our model.
+To check this for our models, we hold out a $(important("validation set")) ``(x_\mathrm{val}, y_\mathrm{val})``, data similar to ``(x, y)`` that we only use to validate our model.
 
-Often for evaluation, we use a different error function than for fitting weights. 
+Often for validation, we use a different error function than for training. 
 Here, we use the $(important("root-mean-squared error")):
 ```math
 E_\mathrm{RMS}(w) = \sqrt{\frac{2E(w)}{n}}
 ```
+
+!!! question
+	What do you observe as we increase the maximum order ``n``?
 """
 
 # ╔═╡ fe2c7c2b-63e3-4cbf-b432-b028ec599292
 md"""
+See how even lower order weights become larger in magnitude as the maximum order increases.
+If we were to look at weights for ``n > 9``, they continue to explode in magnitude.
+
 Ideally, we would have an approach that avoids overfitting regardless of the amount of data being used.
 We can in fact do this by $(important("regularizing")) the weights.
 In effect, we add a term to our loss function that penalizes large weight values.
@@ -613,94 +379,125 @@ Our regularized error function is
 The strength of the penalization is controlled by the magnitude of ``\lambda``.
 When ``\lambda=0``, we apply no regularization, and the weights are fit only by the data.
 When ``\lambda`` is very large, the regularization term dominates, and it takes very strong signal in the data to move the weights away from 0.
+
+!!! question
+	How does the fit model look different as you increase ``\lambda``? How does the error as a function of ``n`` change?
 """
 
 # ╔═╡ 73444608-d0de-440d-8be3-5a02dadcadc7
 md"""
 ## Reflecting uncertainty in the learned model
 
-All along we've been showing the single best fitting function, but data is noisy and incomplete, so we can't be 100% certain about what that best fitting function is.
+All along we've been showing the single best approximation ``\hat{f}``, but data is noisy and incomplete, so this is somewhat overconfident an estimate of ``f``.
+How overconfident?
+We don't know, as our model contains no measure of uncertainty of fit.
 
 Regression models are statistical models, and specifically, we can write them as Bayesian models.
 In a $(important("Bayesian")) model (AKA a "probabilistic model"), uncertainties are quantified with probabilities.
 
-Bayesian models combine a likelihood function (i.e. our loss function) with a prior on the model parameters (i.e. our regularization term), which defines distribution of parameters (i.e. our weights) given the data.
+Bayesian models combine a likelihood function (i.e. our error function) with a prior on the model parameters (i.e. our regularization term), which defines a joint distribution of parameters (i.e. our weights) given the data, called a $(important("posterior distribution")).
 
-For our line model, with 2 degrees of freedom, we can visualize draws from this distribution vs the single best fit.
+For our linear regression model, with 2 degrees of freedom, we can visualize draws from this distribution vs the single best fit.
 """
 
 # ╔═╡ b0773555-44ac-4b06-a410-d25ee1f42399
 md"""
-Bayesian models are very useful for certain problems.
+Interestingly, our overparametrized model has quite a wide ensemble, since many possible curves are able to almost pass through our training data.
+Similarly, our underparametrized models likewise have a wider ensemble, as many linear fits have similar errors, while for ``n=3``, the ensemble is quite tight. 
+
+Bayesian models are very useful for certain problems and have a set of distinct advantages and disadvantages.
 
 Advantages:
-- We can incorporate prior information in a principled way
-- Typically more robust against overfitting
-- Represent uncertainty on hypotheses via a joint distribution
-- We can draw samples for visualizing uncertainty, checking assumptions, and propagating uncertainty to downstream analyses and decisions (generative modeling)
-- Many methods available for model checking
+- We can incorporate prior information in a principled way (i.e. we have rules for setting the amount of regularization)
+- Bayesian models are typically more robust against overfitting.
+- We can represent uncertainty on hypotheses via a joint distribution.
+- We can draw samples for visualizing uncertainty, checking assumptions, and propagating uncertainty to downstream analyses and decisions (generative modeling).
+- There are many methods available for model checking.
+- Often (but not always), Bayesian models are interpretable.
 
 Disadvantages:
-- Difficult to scale to large data or model sizes
+- Difficult to scale to large data or many parameters, since drawing samples is expensive.
 
-**If you have a sophisticated problem and scarce data, you may want to try out $(important("probabilistic programming")).**
+**If data is scarce, uncertainty quantification is important, and/or you want interpretable models, you may want to try out $(important("probabilistic programming")).**
 """
 
 # ╔═╡ df8f0019-84b9-4309-ab16-4a909fa94e88
 md"""
 ## Families of models
 
-The approach we have taken so far works when the observations can occur anywhere on the real line, but even 1-dimensional pbservations can have many constraints/properties:
+We saw earlier the general strategy of adding computed features ``g`` to increase model complexity.
+We can also use this approach to encode model constraints.
+For example, if we know the function ``f`` is periodic with period ``P`` with respect to ``x``, then we could encode this constraint in the model by choosing ``g`` to be sine and cosine functions of increasing frequency:
+
+!!! model
+	```math
+	\hat{f}(x_i; w) = w_0 + \sum_{j=1}^n w_j\cos\left(\frac{2\pi j}{P} x_i\right) + w_{j+1} \sin\left(\frac{2\pi j}{P} x_i\right)
+	```
+
+This is called a [Fourier series](https://en.wikipedia.org/wiki/Fourier_series) and is analogous to a polynomial for periodic functions.
+We could even add aperiodic terms to the sum to explicitly model periodic and aperiodic effects.
+
+Encoding constraints in the model is called $(important("inductive bias")).
+Without inductive bias, it might take enormous amounts of data and a very complex model to learn the constraints that we already know; by encoding the constraint, we are able to learn more with the data we already have.
+
+It's also useful to be able to encode constraints on the labels.
+The approach we have taken so far works when the labels can occur anywhere on the real line, but even 1-dimensional labels can have many constraints/properties, including:
 - positive
 - negative
 - bounded
-- periodic
-- etc
 
-While our approach so far can work in these cases, values of the weights that violate the known constraints are still possible.
-Ideally we would be able to encode these constraints in the model itself.
-This is called $(important("inductive bias")).
+We can encode these constraints by applying a function ``\phi`` to the output of the model
 
-There are 2 main ways we can expand our model to do this.
-We've already seen one way: by applying a function to the raw features ``x`` to get computed features ``g(x)``.
+!!! model
+	```math
+	\hat{f}(x_i; w) = \phi\left(\sum_{j=1}^n w_j g_j(x_i)\right),
+	```
 
-For example, if we choose the sine and cosine functions of increasing frequency as our computed features, then the model is automatically periodic:
-```math
-\hat{f}(x_i; w) = w_0 + \sum_{j=1}^n w_j\cos(j x_i) + w_{j+1} \sin(j x_i)
-```
-This series is called a Fourier series.
-
-Another way we can encode an inductive bias is by applying a function ``\phi`` to the output of the model
-```math
-\hat{f}(x_i; w) = \phi\left(\sum_{j=1}^n w_j g_j(x_i)\right),
-```
 where ``\phi`` smoothly maps from the entire real line to some subset of the real numbers.
+
+Here are 3 useful functions that transform the real line to the positive numbers, negative numbers, or an interval:
+"""
+
+# ╔═╡ ed7cb5c1-528a-4356-80dd-b337107eaf1f
+md"""
+## Regression for classification problems
+
+Suppose some expert looked at our ``y`` values and assigned a label to each depending on whether they were above or below some threshold ``t``.
+Since ``y`` is noisy, the expert may be less certain how to assign values close to ``t``.
+So they could encode the label as a probability ``p(y > t)``.
+Such a label would be continuous and bounded between 0 and 1.
+Then they may assign a less certain probability like ``p(y > t) = \frac{1}{2}`` for points near the threshold and either much higher or lower probabilities for values far from the threshold.
+Modeling these probabilities would be a different regression problem.
+
+Alternatively, for convenience they might ignore the uncertainty and assign discrete, binary labels ``c=1`` for ``y > t`` and ``c=0`` for ``y \le t``.
+Since ``c`` is discrete, building a model to predict ``c`` is a $(important("classification problem")).
+
+Drag the slider below to change ``t`` to get an intuition for how the continuous and discretized labels relate.
 """
 
 # ╔═╡ ba59678b-1606-4132-9f19-0dae1e660195
 md"""
-Because the data (``c``) now takes on discrete values, this is a classification problem.
-But as it turns out, we can use much of our existing modeling framework to perform classification.
+We could use any of our previous approaches to model probabilities.
+However, we know that probabilities must be between 0 and 1, so it's better to encode that information into the model.
+We do this by applying a $(important("sigmoid"))al (S-shaped) function to the output.
 
-There are 2 main changes we need to make here.
-First, because we can interpret the ``c`` values as absolutely confident probabilities, we want our predictions to also be probabilities.
-These are more useful than the class labels themselves, because we can more easily identify when our model has a hard time making a prediction, and we can always use thresholding to turn our probabilities into class predictions.
-
-To predict probabilities, our predictions to be in the range `[0, 1]`.
-We do this using a $(important("sigmoid"))al (S-shaped) function.
-
-There are various sigmoids we can use in practice.
-Besides their output domain, which can be harmonized through scaling and shifting, they have subtely different properties.
+Below are various common sigmoids we can use.
+Besides their output domain, which can be harmonized through scaling and shifting, they have subtly different properties that we won't cover.
 """
 
 # ╔═╡ b53798f9-24c2-4def-ab6f-447a5d809865
 md"""
-Here we use the logistic function, which we will refer to only as ``\sigma``.
+When predicting probabilities, it's common to choose the logistic function, which we will refer to only as ``\sigma``.
 
 Our model is then
-```math
-\hat{f}(x_i; w) = \sigma\left( \sum_{j=1}^n w_j g_j(x_i)\right)
-```
+!!! model
+	```math
+	\hat{f}(x_i; w) = \sigma\left( \sum_{j=1}^n w_j g_j(x_i)\right).
+	```
+
+Suppose we interpret the discrete class labels as absolutely confident probabilities, i.e. ``c==1`` could be interpreted as ``p(y > t) = 1``, while ``c=0`` could be interpreted as ``p(y > t) = 0``.
+In this case, we could use the exact same model to perform classification, but instead of predicting binary classes it predicts probabilities of assignment to each class.
+These probabilities are more useful than the class labels themselves, because we can more easily identify when our model has a hard time making a prediction, and we can always use thresholding to turn our probabilities into class predictions.
 
 While we could use the same sum-of-squares loss on this function, it turns out that a more appropriate loss is a $(important("cross-entropy loss")):
 
@@ -708,7 +505,7 @@ While we could use the same sum-of-squares loss on this function, it turns out t
 E(w) = -\sum_{i=1}^k c_i \log \hat{f}(x_i; w) + (1 - c_i) \log (1 - \hat{f}(x_i; w))
 ````
 
-Now we can fit our model.
+Below we show the results of fitting an order ``n=33`` polynomial with logistic function output to the binary labels.
 """
 
 # ╔═╡ 5505fc32-1e46-4256-831c-d1b94d1e946c
@@ -716,16 +513,17 @@ md"""
 ## Nesting functions for model expansion
 
 To recap, we've seen 3 strategies for model expansion:
-1. Applying a function to the inputs
-2. Applying a function to the outputs
+1. Applying a function to the inputs to compute features
+2. Applying a function to the outputs to change the output domain
 3. Doing both at the same time
 
 We've so far used all of the weights in the middle, but why not apply some weights, then a function, then apply more weights?
 That is, why not have two matrices of weights ``W_1`` and ``W_2``:
 
-```math
-\hat{f}(x; W_1, W_2) = \sigma(\sigma(g(x) W_1) W_2).
-```
+!!! model
+	```math
+	\hat{f}(x; W_1, W_2) = \sigma(\sigma(g(x) W_1) W_2).
+	```
 
 There's no good reason for us not to try this.
 In fact, it turns out that alternating application of linear operators (i.e. weighting and adding) and $(important("activation")) functions like our sigmoid is incredibly expressive.
@@ -736,37 +534,266 @@ These are called $(important("neural networks")).
 md"""
 ## Neural Networks
 
-We teased that we can write a neural network as
-```math
-\hat{f}(x; W_1, W_2) = \sigma(\sigma(x W_1) W_2)
-```
+One example of a neural network for classification is
 
-Note that if ``g(x) = \sigma(x W_1)``, then we have computed features that depend on weights, followed by a logistic regression.
-Training the network then also involves learning computed features that are useful for maximizing the loss.
+!!! model
+	```math
+	\hat{f}(x; W_1, W_2) = \sigma(\sigma(x W_1) W_2).
+	```
+
+There's a really intuitive way to interpret this.
+Let ``g(x; W_1) = \sigma(x W_1)``.
+Then ``\hat{f}(x; W_1, W_2) = \sigma(g(x; W_1) W_2)``.
+So this neural network is effectively a logistic regression with weight-dependent computed features.
+Training the network then also involves learning computed features that are useful for minimizing the error.
 This is a very useful way to understand neural networks!
 
 It is more common to represent neural networks graphically:
 $(PlutoUI.Resource("https://svgshare.com/i/fmy.svg", :width=>450))
 
-Each node in the network corresponds to an input feature, computed feature, or output label.
+Each node in the network is called a $(important("unit")) or $(important("neuron")) and corresponds to a single input feature, computed feature, or output label.
 Each edge is a single weight in a weight matrix.
+
 The collection of all features before or after a single function evaluation are called $(important("layers")).
+Besides the input layer and output layer, all layers in the middle are termed hidden layers.
 """
+
+# ╔═╡ c75744a0-3c3f-4042-a796-6cbd9ec11195
+md"""
+## UI elements
+
+This section contains UI elements and variables they are bound to.
+"""
+
+# ╔═╡ 2cc52188-b262-4f65-b042-ad94d90523d8
+begin
+    w0_input = @bind w0 Scrubbable(-5:0.01:5; default=0.3, format="0.2f")
+    w1_input = @bind w1 Scrubbable(-5:0.01:5; default=-3, format="0.2f")
+    g_input = @bind g MultiSelect(
+        [
+            one => "1",
+            identity => "x",
+            (x -> x^2) => "x²",
+            sin => "sin(x)",
+            cos => "cos(x)",
+            tan => "tan(x)",
+            exp => "exp(x)",
+        ];
+        size=5,
+        default=Function[one],
+    )
+    max_order_input = @bind max_order Scrubbable(0:100; default=0)
+    show_contour_input = @bind show_contour CheckBox(; default=false)
+	λ_input = @bind λ Scrubbable(exp10.([-Inf; -15:1:0]); default=0, format=".1g")
+    thresh_input = @bind thresh Scrubbable(-4:0.01:4; default=0)
+    nhidden1_input = @bind nhidden1 Scrubbable(0:10; default=0)
+    nhidden2_input = @bind nhidden2 Scrubbable(0:10; default=0)
+end;
+
+# ╔═╡ cd49e0a5-4120-481a-965e-72e7bdaf867c
+md"""
+## The proverbial straight line
+
+### The horizontal line
+
+The simplest model we could choose for ``f`` is a horizontal line:
+
+!!! model
+	````math
+	\hat{f}(x_i; w) = w_0
+	````
+
+This model has one free parameter ``w_0``.
+Written this way, this is called an $(important("untrained model")).
+Once we fix the value of ``w_0``, it is called a $(important("trained model")).
+
+Training is just the process of setting ``w_0`` to achieve some goal.
+
+Drag the slider below to adjust ``w_0``.
+
+``w_0=`` $w0_input
+
+!!! question
+	Which fit is "best"?
+"""
+
+# ╔═╡ 4c7e53c5-1271-4acf-95cc-5345564d1b15
+md"""
+To say which fit is best, we need a measure of goodness of fit, or equivalently, of badness of fit.
+That is, we need a notion of error; the best fit has the smallest error.
+This is called an $(important("error function")) or $(important("loss function")).
+Here, we choose a "sum-of-squares" error function:
+````math
+E(w) = \frac{1}{2}\sum_{i=1}^n (\hat{f}(x_i; w) - y_i)^2
+````
+
+``E(w) = 0`` when ``\hat{f}`` is perfectly able to predict ``y`` from ``x``.
+
+Now drag the value of ``w_0`` until you've minimized the error shown at the top of the below plot.
+
+``w_0 = `` $w0_input
+"""
+
+# ╔═╡ ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
+md"""
+### A line with slope
+
+For a better fit, let's give the line not only an intercept ``w_0`` but also also a slope ``w_1``:
+
+!!! model
+	````math
+	\hat{f}(x_i; w) = w_0 + w_1 x_i
+	````
+
+This model now has two degrees of freedom, which we can arrange in a $(important("weight")) or $(important("internal parameter")) vector ``w = \begin{pmatrix}w_0 \\ w_1\end{pmatrix}``.
+This is an example of $(important("linear regression")).
+
+``w_0`` is often called an $(important("intercept")) or $(important("bias")) term, since it shifts the output of the function.
+
+Drag the below values to minimize the loss.
+How low can you get the error?
+
+``w^\top = (`` $w0_input ``, `` $w1_input ``)``
+"""
+
+# ╔═╡ b657b5fe-af35-46e9-93c7-f897e7b22ddc
+md"""
+Because we have two weights, our parameter space is 2-dimensional.
+So we can equivalently plot the combination of weights on a 2D grid with a readout of the error and just move the values around until the error is minimized:
+
+``w^\top = (`` $w0_input ``, `` $w1_input ``)``
+"""
+
+# ╔═╡ 2eb005a3-f5b2-4216-b56f-e25157b8c33c
+md"""
+Let's overlay the computer-generated trajectory on our manual one.
+
+!!! question
+	Can you tell what strategy the computer is using to minimize the error? What about if you view the contours of the error function?
+
+Show error: $show_contour_input
+"""
+
+# ╔═╡ 74290eff-781b-44c9-8a90-96bffbe040df
+md"""
+## Model comparison
+
+_This section is inspired by Section 1.1 of [Pattern recognition and machine learning](https://link.springer.com/book/9780387310732) by Christopher Bishop._
+
+### Scaling the model up by trial-and-error
+
+Fitting the model gave us the best fitting line, but we think we can do better.
+To do this, we need to allow ``\hat{f}`` to take more complex shapes.
+
+One way we can do this is by defining ``\hat{f}`` as the weighted sum of simpler functions ``g_j``:
+
+!!! model
+	```math
+	\hat{f}(x_i; w) = w_1 g_1(x_i) + w_2 g_2(x_i) + \ldots + w_n g_n(x_i) = \sum_{j=1}^n w_j g_j(x_i).
+	```
+
+Remember that we called ``x_i`` a raw feature.
+``g_j(x_i)`` is called a $(important("computed feature")), and so we now have ``n`` computed features for each initial raw feature.
+Note that if ``g_j`` is a nonlinear function of ``x``, then ``\hat{f}`` is a nonlinear function of ``x`` but still a linear function of the weight vector ``w``.
+
+Let's try selecting some useful scalar functions to add to ``g`` below.
+
+Hint: ``\begin{bmatrix}1 \\ x\end{bmatrix}`` is equivalent to fitting the line with slope.
+
+``g(x) = `` $g_input
+"""
+
+# ╔═╡ bf50534d-1c9a-439a-9922-262f64b83c1d
+let
+    plots = map(g) do gj
+        lex = latexify(gj(Symbolics.Sym{Real}(:x)); env=:raw)
+        plot(gj, 0, 1; color=:orange, xlabel=L"x", ylabel=L"%$lex", label="")
+    end
+    plot(plots...; link=:both)
+end
+
+# ╔═╡ ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
+md"""
+### Systematically scaling the model by adding terms
+
+One way we can systematically scale the model complexity is by choosing as many computed features as we want from some indexed family of functions ``g_j``.
+
+For example, we can let ``g_j(x) = x^j``, so that
+
+!!! model
+	```math
+	\hat{f}(x_i; w) = w_0 + w_1 x_1 + w_2 x^2 + \ldots + w_n x^n = \sum_{j=0}^n w_j x_i^j
+	```
+
+Functions of the form of ``\hat{f}`` are called $(important("polynomials")), and many functions (specifically, [analytic](https://en.wikipedia.org/wiki/Analytic_function) functions) can be exactly computed with infinite terms (i.e. ``n \to \infty``) or approximated with finite terms (by picking some manageable ``n``).
+Fitting these polynomial models is called $(important("polynomial regression")).
+
+Our line with two degrees of freedom is the special case ``n=1``, though note again that here ``\hat{f}`` is still linear with respect to the weights ``w`` (i.e. this is still linear regression)
+
+!!! question
+	What happens as we increase the maximum order ``n``?
+
+``n = `` $max_order_input
+"""
+
+# ╔═╡ 06dee467-1f54-48e1-908d-8e4c9028a748
+md"``n = `` $max_order_input"
+
+# ╔═╡ efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
+md"``n = `` $max_order_input"
+
+# ╔═╡ e2890775-2e29-4244-adac-c37f8f2a8a8e
+md"``n = `` $max_order_input ``\quad`` ``\lambda =`` $λ_input"
+
+# ╔═╡ 1e12834c-4b29-41db-ab1f-d93db62c8341
+md"``t = `` $thresh_input"
+
+# ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
+md"""
+### Fitting 1D data with neural networks
+
+Let's take the simple neural architecture with a single hidden layer displayed above and use it to fit the same classification data we fit in the linear regression example.
+
+!!! question
+	How many units does it take before the fit is similar to what we saw with logistic regression?
+
+Number of hidden units = $nhidden1_input
+"""
+
+# ╔═╡ 29fb4486-5605-438f-9b1a-a24a19b20c5e
+md"""
+Sure, we could fit this data with logistic regression if we chose the right computed features.
+Importantly, it is not possible to fit this data if we only user linear features.
+But we can also fit this data with a neural net, which would compute the features for us, reusing the same architecture we defined above and only adding a second input feature.
+
+$(PlutoUI.Resource("https://svgshare.com/i/fky.svg", :width=>450))
+
+!!! question
+	How many hidden units does it take until this fit looks good to you?
+
+Number of hidden units = $nhidden2_input
+"""
+
+# ╔═╡ c3d6b3f4-d8e2-4fff-b3fa-0421a09ded81
+HTML("<style )
 
 # ╔═╡ d8983a9d-1880-4dc4-9c17-23281767e0c2
 md"## Definitions"
 
 # ╔═╡ 5e7bda42-0266-4498-906d-9aca8b6c4bf3
-f(x) = sinpi(2x) + 2.5x
+f(x) = sinpi(2x) + 2.5x;
+
+# ╔═╡ 805d2824-86cc-45bd-88b0-e6e14d9fde48
+f2(x, y) = sinpi(2x) * sinpi(2y);
 
 # ╔═╡ 3f4bffbb-51f4-4446-9b9c-cd3f99edfefa
-lossl2(yhat, y) = sum(abs2, yhat .- y) / 2
+lossl2(yhat, y) = sum(abs2, yhat .- y) / 2;
 
 # ╔═╡ 04c7209e-c4f8-454b-a883-cb2c5fac5203
-error(f_hat, x, y) = lossl2(f_hat.(x), y)
+error(f, x, y) = lossl2(f.(x), y);
 
 # ╔═╡ 7fa55e99-5c0c-465d-a879-bd844e516131
-error_rms(fhat, x, y; method=error) = sqrt(method(fhat, x, y) * 2//length(x))
+error_rms(f, x, y; method=error) = sqrt(method(f, x, y) * 2//length(x));
 
 # ╔═╡ ddee1cf7-7977-407d-a004-08b52f6ff8c8
 md"## Plotting functions"
@@ -816,28 +843,24 @@ md"""
 ## Data generation
 """
 
-# ╔═╡ 449f1aae-57b4-4b24-98d9-32c514e00821
-error_actual = 0.2
-
 # ╔═╡ 510f07d9-62e0-40a7-b974-e2ae9bad7f73
 function generate_data(f, x, error; rng=Random.GLOBAL_RNG)
     return f.(x) .+ randn.(rng) .* error
 end
 
 # ╔═╡ 905793d5-93c5-4d86-9a88-33d6d806d88a
-ndata = 10
-
-# ╔═╡ c17da7e0-d701-45e6-9967-b2cb0d2b057e
-data_seed = 42
-
-# ╔═╡ d9a82c82-576e-4ee5-a8be-aea1332b3e74
-data_test_seed = 63
-
-# ╔═╡ b77903d1-c788-4efd-80c4-313859e856e5
-x = collect(range(0, 1; length=ndata))
-
-# ╔═╡ 01af74cf-172d-4561-a7d9-6131a22b4161
-y = generate_data(f, x, error_actual; rng=MersenneTwister(data_seed))
+begin
+	error_actual = 0.2
+	ndata = 10
+	data_seed = 42
+	data_test_seed = 63
+	x = collect(range(0, 1; length=ndata))
+	y = generate_data(f, x, error_actual; rng=MersenneTwister(data_seed))
+	ytest = generate_data(f, x, error_actual; rng=MersenneTwister(data_test_seed))
+	xmore = collect(range(0, 1; length=50))
+	ymore = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_seed))
+	ymore_test = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_test_seed))
+end;
 
 # ╔═╡ a1ca71d8-2b2c-48de-8088-3cc32135fe5a
 round.(DataFrame(; x, y); digits=2)
@@ -845,36 +868,19 @@ round.(DataFrame(; x, y); digits=2)
 # ╔═╡ 1b4812d4-3879-4a79-a95d-20cad2959f5c
 plot_data(x, y)
 
-# ╔═╡ 5198cd41-f534-408c-8318-0787b4d04ae0
-loss_line = error(f_hat_line, x, y)
-
-# ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
-let
-    scatter([w0_2], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
-    plot!(; title="\$ E = $(round(loss_line; digits=2)) \$", xlabel=L"w_0", ylabel=L"w_1")
-end
-
 # ╔═╡ 942f314e-927b-4371-8c83-83801c860b4d
 line_trace = let
+	step_length = 0.02
     obj(w) = error(x -> w[1] + w[2] * x, x, y)
     winit = [0.3, -3.0]
     optimizer = Optim.GradientDescent(;
-        alphaguess=Optim.LineSearches.InitialStatic(; alpha=0.02),
+        alphaguess=Optim.LineSearches.InitialStatic(; alpha=step_length),
         linesearch=Optim.LineSearches.Static(),
     )
     options = Optim.Options(; store_trace=true, extended_trace=true)
     res = Optim.optimize(obj, winit, optimizer, options)
     wtrace = Optim.x_trace(res)
 end
-
-# ╔═╡ 5def5552-fc0e-4e44-bed2-49edd810c75a
-ytest = generate_data(f, x, error_actual; rng=MersenneTwister(data_test_seed))
-
-# ╔═╡ a2e8fdca-7f23-4f94-8b94-502ff29500bc
-xmore = collect(range(0, 1; length=50))
-
-# ╔═╡ 072bf511-749d-421b-8e56-d706da88f031
-ymore = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_seed))
 
 # ╔═╡ 09877b51-c34c-4351-ab8d-0fbee76d5a1b
 let
@@ -932,13 +938,78 @@ let
     plot_data(xmore, c; data_color=c .+ 1, f_hat)
 end
 
-# ╔═╡ f6f3c9b7-dd9d-4f7b-9626-93534c15f199
-ymore_test = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_test_seed))
+# ╔═╡ 10b73d22-cf2a-479c-84b6-6a63a694f398
+x2, c2 = let
+    rng = MersenneTwister(92)
+    x = rand(rng, 400, 2)
+    z = f2.(x[:, 1], x[:, 2]) .+ randn.(rng) .* 0.1
+    c = Int.(z .> 0)
+    x, c
+end;
+
+# ╔═╡ 82a245fa-6e02-41f4-bba4-769863a896db
+round.(DataFrame("x[1]" => x2[:, 1], "x[2]" => x2[:, 2], "c" => c2); digits=2)
+
+# ╔═╡ dda5a074-3f7b-46dd-bc4b-cb05117ec425
+let
+    scatter(
+        x2[:, 1], x2[:, 2]; group=c2, label=[L"c=0" L"c=1"], xlabel=L"x_1", ylabel=L"x_2"
+    )
+end
+
+# ╔═╡ f52b2954-6edb-48cc-8dc9-94a4ef613012
+let
+    Random.seed!(28)
+    λ = 1e-6
+    data = [(x2', c2')]
+    if nhidden2 == 0
+        model = Dense(2, 1, Flux.σ)
+    else
+        model = Chain(
+            Dense(2, nhidden2, Flux.σ),  # x -> σ(x * W₁ + w₁₀)
+            Dense(nhidden2, 1, Flux.σ),  # z -> σ(z * W₂ + w₂₀)
+        )
+    end
+    w = Flux.params(model)
+    penalty() = sum(wi -> sum(abs2, wi), w) * λ
+    loss(x, y) = Flux.Losses.mse(model(x), y) + penalty()
+    opt = Flux.Optimise.ADAM()
+    for _ in 1:20_000
+        Flux.train!(loss, w, data, opt)
+    end
+    f_hat(x, y) = only(model([x, y]))
+    lex = latexify(
+        f_hat(Symbolics.Sym{Float64}(:x_1), Symbolics.Sym{Float64}(:x_2));
+        fmt="%.2f",
+        env=:raw,
+    )
+    equation = L"%$lex"
+    p = contourf(
+        -0.01:0.01:1.01, -0.01:0.01:1.01, f_hat; color=:coolwarm, lw=0, clim=(0, 1)
+    )
+    scatter!(p, x2[:, 1], x2[:, 2]; color=c2 .+ 1, group=c2, label=[L"c=0" L"c=1"], msw=0.5)
+    annotate!(p, [(0, 1.06, (equation, :left, :top, 10))])
+    plot!(; xlabel=L"x_1", ylabel=L"x_2")
+end
 
 # ╔═╡ 318a6643-5377-4152-8468-51dae1b78144
 md"""
-## Model fitting
+## Models and utilities
 """
+
+# ╔═╡ 4748a526-8d2e-43a6-8f30-82abf238d624
+begin
+    # compute feature matrix
+    function compute_features(g, x::AbstractVector)
+        z = similar(x, length(x)..., length(g)...)
+        for j in eachindex(g)
+            z[:, j] .= g[j].(x)
+        end
+        return z
+    end
+    # compute feature vector
+    compute_features(g, x) = map(gj -> gj(x), g)
+end
 
 # ╔═╡ bddafce9-30e4-4708-96ae-938bff9edfe7
 solve_regression(x, y) = x \ y
@@ -946,11 +1017,23 @@ solve_regression(x, y) = x \ y
 # ╔═╡ ebb0c754-12f1-4f80-a5f6-98a61b915fa6
 solve_regression(x, y, λ) = (x'x + λ * I) \ (x'y) # ridge regression
 
-# ╔═╡ 53eab8ed-9a2d-4758-8d51-a74771e4f144
-function lossce(yhat, y)
-    return mapreduce(+, yhat, y) do yhati, yi
-        return xlogy(yhati, yi)
-    end
+# ╔═╡ 34bad558-e70f-4d46-a9ab-7acc6c89db7a
+let
+    w = solve_regression(compute_features(g, x), y)
+    wround = round.(w; digits=2)
+    f_hat(x) = sum(dot(w, compute_features(g, x)))
+    f_hat_sym(x) = sum(wround .* compute_features(g, x))
+    err = round(error(f_hat, x, y); digits=2)
+    p = plot_data(x, y; f_hat, show_residuals=true)
+    lex = latexify(f_hat_sym(Symbolics.Sym{Real}(:x)); env=:raw)
+    annotate!(p, [(minimum(x), maximum(y), ("\$\\hat{f}(x)=$lex\$", :left, :top))])
+    plot!(p; title="\$E = $err \$")
+end
+
+# ╔═╡ 2d730c2f-7320-4879-b6a2-bee8c7c9b338
+function as_latex(f; varname=:x, fname="\\hat{f}")
+	var = Symbolics.Sym{Real}(varname)
+	return L"%$fname(x) = %$(latexify(simplify(f(var)); env=:raw))"
 end
 
 # ╔═╡ a5fe54fb-4f92-4a35-8038-8d36a4aa065c
@@ -982,11 +1065,10 @@ begin
         return m
     end
 
-    function as_latex(m::PolyModel; varname=:x, fname="\\hat{f}", digits=2)
+    function as_latex(m::PolyModel; digits=2, kwargs...)
         w = round.(m.w; digits)
         mapprox = PolyModel(w, round(m.λ; digits))
-        var = Symbolics.Sym{Real}(varname)
-        return L"%$fname(x) = %$(latexify(simplify(mapprox(var)); env=:raw))"
+		return as_latex(x -> mapprox(x); kwargs...)
     end
 
     function Base.show(io::IO, mime::MIME"text/latex", m::PolyModel)
@@ -996,8 +1078,8 @@ end;
 
 # ╔═╡ 72198269-d070-493f-92eb-36135692ca8f
 let
-    equation = as_latex(PolyModel([w0]); digits=3)
-    plot_data(x, y; f_hat=x -> w0, show_residuals=true, equation)
+	f_hat(x) = w0
+    plot_data(x, y; f_hat, show_residuals=true, equation = as_latex(f_hat))
 end
 
 # ╔═╡ 288aa7d7-8785-4f55-95e6-409e2ceb203a
@@ -1009,11 +1091,23 @@ let
     plot!(p; title="\$ E= $loss \$")
 end
 
+# ╔═╡ 1a906880-75e1-447b-9adf-31ae44f0135f
+begin
+	f_hat_line(x) = w0 + w1 * x
+	error_line = error(f_hat_line, x, y)
+	equation_line = as_latex(f_hat_line)
+end;
+
 # ╔═╡ 345ae96b-92c2-4ac4-bfdf-302113627ffb
 let
-    equation = as_latex(PolyModel([w0_2, w1]); digits=3)
-    p = plot_data(x, y; f_hat=f_hat_line, show_residuals=true, equation)
-    plot!(p; title="\$ E= $(round(loss_line; digits=2)) \$")
+    p = plot_data(x, y; f_hat=f_hat_line, show_residuals=true, equation=equation_line)
+    plot!(p; title=L"E= %$(round(error_line; digits=2))")
+end
+
+# ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
+let
+    scatter([w0], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
+    plot!(; title=L"E= %$(round(error_line; digits=2))", xlabel=L"w_0", ylabel=L"w_1")
 end
 
 # ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db
@@ -1083,14 +1177,25 @@ let
     plot(plots...; layout=(2, 2), link=:all)
 end
 
-# ╔═╡ aa7b8b58-f959-47de-84d7-8c9cf3ad96be
+# ╔═╡ a9163072-cad9-4b0b-b154-d315c6b68de4
 let
-    f_hat = fit!(PolyModel(max_order), x, y)
+    max_orders = [0, 1, 3, 6, 9]
+    pairs = map(max_orders) do n
+        m = fit!(PolyModel(n), x, y)
+        # pad with `missing`s
+        "$n" => [round.(m.w; digits=2); fill(md"", maximum(max_orders) - n)]
+    end
+    DataFrame(pairs)
+end
+
+# ╔═╡ 3731fa3f-efb3-43d1-900f-8582cd89d526
+function plot_poly_compare(x, y, ytest, max_order; λ=0)
+    f_hat = fit!(PolyModel(max_order, λ), x, y)
     p = plot_data(x, ytest; f_hat=x -> f_hat(x), data_color=:magenta, show_residuals=true)
     plot_data!(p, x, y)
-    max_orders = 0:max_order
+    max_orders = 0:max(10, max_order)
     rmse_values = map(max_orders) do n
-        m = fit!(PolyModel(n), x, y)
+        m = fit!(PolyModel(n, λ), x, y)
         return error_rms(m, x, y), error_rms(m, x, ytest)
     end
     p2 = plot(max_orders, first.(rmse_values); color=:blue, label="training")
@@ -1108,75 +1213,20 @@ let
         legend=:topright,
         xlabel=L"n",
         ylabel=L"E_\mathrm{RMS}",
-        ylims=(-0.1, 1.1),
         xlims=(-0.5, max(max_order, 10.5)),
+		ylims=(-0.01, NaN),
     )
     plot(p, p2)
 end
 
-# ╔═╡ a9163072-cad9-4b0b-b154-d315c6b68de4
-let
-    max_orders = [0, 1, 3, 6, 9]
-    pairs = map(max_orders) do n
-        m = fit!(PolyModel(n), x, y)
-        # pad with `missing`s
-        "$n" => [round.(m.w; digits=2); fill(md"", maximum(max_orders) - n)]
-    end
-    DataFrame(pairs)
-end
+# ╔═╡ aa7b8b58-f959-47de-84d7-8c9cf3ad96be
+plot_poly_compare(x, y, ytest, max_order)
 
-# ╔═╡ 444e4eba-9b5a-4e37-8853-5d24c5c398ca
-let
-    x, y, ytest = xmore, ymore, ymore_test
-    f_hat = fit!(PolyModel(max_order), x, y)
-    p = plot_data(x, ytest; f_hat=x -> f_hat(x), data_color=:magenta, show_residuals=false)
-    # plot_data!(p, x, y)
-    max_orders = 0:max(10, max_order)
-    rmse_values = map(max_orders) do n
-        m = fit!(PolyModel(n), x, y)
-        return error_rms(m, x, y), error_rms(m, x, ytest)
-    end
-    p2 = plot(max_orders, first.(rmse_values); color=:blue, label="training")
-    plot!(p2, max_orders, last.(rmse_values); color=:magenta, label="validation")
-    scatter!(
-        p2,
-        [max_order],
-        [rmse_values[max_order + 1]...]';
-        color=[:blue :magenta],
-        ms=5,
-        label="",
-    )
-    plot!(p2; legend=:topright, xlabel=L"n", ylabel=L"E_\mathrm{RMS}", ylims=(-0.01, NaN))
-    plot(p, p2)
-end
+# ╔═╡ 2183e956-1b47-4e97-b957-c5df0541ff7b
+plot_poly_compare(xmore, ymore, ymore_test, max_order)
 
-# ╔═╡ 63d99d6f-addf-4efc-a680-d4c4733e3941
-error_reg(m::PolyModel, x, y) = error(m, x, y) + sum(abs2, m.w) * m.λ / 2
-
-# ╔═╡ 645525f1-77cb-4b18-81df-3eafc0b4004e
-let
-    λ = exp(logλ)
-    f_hat = fit!(PolyModel(max_order, λ), x, y)
-    p = plot_data(x, ytest; f_hat=x -> f_hat(x), data_color=:magenta, show_residuals=true)
-    plot_data!(p, x, y)
-    max_orders = 0:max(10, max_order)
-    rmse_values = map(max_orders) do n
-        m = fit!(PolyModel(n, λ), x, y)
-        return error_rms(m, x, y), error_rms(m, x, ytest)
-    end
-    p2 = plot(max_orders, first.(rmse_values); color=:blue, label="training")
-    plot!(p2, max_orders, last.(rmse_values); color=:magenta, label="validation")
-    scatter!(
-        p2,
-        [max_order],
-        [rmse_values[max_order + 1]...]';
-        color=[:blue :magenta],
-        ms=5,
-        label="",
-    )
-    plot!(p2; legend=:topright, xlabel=L"n", ylabel=L"E_\mathrm{RMS}", ylims=(-0.01, NaN))
-    plot(p, p2)
-end
+# ╔═╡ 9ce43ec1-78f5-414f-9796-ab3159be7985
+plot_poly_compare(x, y, ytest, max_order; λ)
 
 # ╔═╡ 86e58e39-186e-470f-832a-32cd86717daa
 # for computational reasons, we use the QR parameterization of the regression model
@@ -1266,34 +1316,6 @@ let
     plot(plots...; layout=(2, 2), link=:both)
 end
 
-# ╔═╡ 4748a526-8d2e-43a6-8f30-82abf238d624
-begin
-    # compute feature matrix
-    function compute_features(g, x::AbstractVector)
-        z = similar(x, length(x)..., length(g)...)
-        for j in eachindex(g)
-            z[:, j] .= g[j].(x)
-        end
-        return z
-    end
-    # compute feature vector
-    compute_features(g, x) = map(gj -> gj(x), g)
-end
-
-# ╔═╡ 34bad558-e70f-4d46-a9ab-7acc6c89db7a
-let
-    w = solve_regression(compute_features(g, x), y)
-    wround = round.(w; digits=2)
-    f_hat(x) = sum(dot(w, compute_features(g, x)))
-    f_hat_sym(x) = sum(wround .* compute_features(g, x))
-    err = round(error(f_hat, x, y); digits=2)
-    p = plot_data(x, y; f_hat, show_residuals=true)
-    lex = latexify(f_hat_sym(Symbolics.Sym{Real}(:x)); env=:raw)
-    annotate!(p, [(minimum(x), maximum(y), ("\$\\hat{f}(x)=$lex\$", :left, :top))])
-    plot!(p; title="\$E = $err \$")
-    PlutoRunner.DivElement(; children=[md"``g(x) = `` $g_input", p])
-end
-
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -1327,8 +1349,9 @@ Turing = "~0.21.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.7.2"
+julia_version = "1.8.0-beta1"
 manifest_format = "2.0"
+project_hash = "addb13b0aea7688f4fe00d84034f44c777be88f4"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Markdown", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -1402,6 +1425,7 @@ version = "2.3.0"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
+version = "1.1.1"
 
 [[deps.ArrayInterface]]
 deps = ["Compat", "IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
@@ -1556,6 +1580,7 @@ version = "3.42.0"
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
+version = "0.5.0+0"
 
 [[deps.CompositeTypes]]
 git-tree-sha1 = "d5b014b216dc891e81fea299638e4c10c657b582"
@@ -1672,8 +1697,9 @@ uuid = "5b8099bc-c8ec-5219-889f-1d9e522a28bf"
 version = "0.5.9"
 
 [[deps.Downloads]]
-deps = ["ArgTools", "LibCURL", "NetworkOptions"]
+deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
+version = "1.6.0"
 
 [[deps.DualNumbers]]
 deps = ["Calculus", "NaNMath", "SpecialFunctions"]
@@ -1745,6 +1771,9 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "c6033cc3892d0ef5bb9cd29b7f2f0331ea5184ea"
 uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
 version = "3.3.10+0"
+
+[[deps.FileWatching]]
+uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
 [[deps.FillArrays]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "Statistics"]
@@ -2085,10 +2114,12 @@ version = "0.1.3"
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
+version = "0.6.3"
 
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
+version = "7.81.0+0"
 
 [[deps.LibGit2]]
 deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
@@ -2097,6 +2128,7 @@ uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
+version = "1.10.2+0"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -2228,6 +2260,7 @@ version = "1.0.3"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
+version = "2.28.0+0"
 
 [[deps.Measures]]
 git-tree-sha1 = "e498ddeee6f9fdb4551ce855a46f54dbd900245f"
@@ -2263,6 +2296,7 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
+version = "2022.2.1"
 
 [[deps.MultivariatePolynomials]]
 deps = ["DataStructures", "LinearAlgebra", "MutableArithmetics"]
@@ -2312,6 +2346,7 @@ version = "1.0.0"
 
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
+version = "1.2.0"
 
 [[deps.OffsetArrays]]
 deps = ["Adapt"]
@@ -2328,10 +2363,12 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
+version = "0.3.17+2"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
+version = "0.8.1+0"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2395,6 +2432,7 @@ version = "0.40.1+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+version = "1.8.0"
 
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Requires", "Statistics"]
@@ -2590,6 +2628,7 @@ version = "0.5.3"
 
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
+version = "0.7.0"
 
 [[deps.SciMLBase]]
 deps = ["ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "RecipesBase", "RecursiveArrayTools", "StaticArrays", "Statistics", "Tables", "TreeViews"]
@@ -2717,6 +2756,7 @@ version = "4.3.1"
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
+version = "1.0.0"
 
 [[deps.TableTraits]]
 deps = ["IteratorInterfaceExtensions"]
@@ -2733,6 +2773,7 @@ version = "1.7.0"
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
+version = "1.10.0"
 
 [[deps.TermInterface]]
 git-tree-sha1 = "7aa601f12708243987b88d1b453541a75e3d8c7a"
@@ -2984,6 +3025,7 @@ version = "0.9.4"
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
+version = "1.2.12+1"
 
 [[deps.Zstd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -3012,6 +3054,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
+version = "5.0.1+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -3034,10 +3077,12 @@ version = "1.3.7+1"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
+version = "1.41.0+1"
 
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
+version = "16.2.1+1"
 
 [[deps.x264_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -3068,14 +3113,12 @@ version = "0.9.1+5"
 # ╟─cd49e0a5-4120-481a-965e-72e7bdaf867c
 # ╠═72198269-d070-493f-92eb-36135692ca8f
 # ╟─4c7e53c5-1271-4acf-95cc-5345564d1b15
-# ╟─0b719897-4515-46c3-830a-eaec4d1666a2
 # ╠═288aa7d7-8785-4f55-95e6-409e2ceb203a
 # ╟─21a16ac9-f83e-46e8-81a2-09f79aa17eae
 # ╟─ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 # ╠═345ae96b-92c2-4ac4-bfdf-302113627ffb
+# ╠═1a906880-75e1-447b-9adf-31ae44f0135f
 # ╟─b657b5fe-af35-46e9-93c7-f897e7b22ddc
-# ╠═050548ce-a62e-43e7-bb6a-e96a2f874f55
-# ╠═5198cd41-f534-408c-8318-0787b4d04ae0
 # ╠═0d1164df-8236-494b-b8b9-71481c94c0d9
 # ╟─def60ead-a40b-4376-82cd-a77455f6b942
 # ╠═67486053-5971-406b-8680-0d80803d797a
@@ -3091,25 +3134,21 @@ version = "0.9.1+5"
 # ╠═bf50534d-1c9a-439a-9922-262f64b83c1d
 # ╟─06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
 # ╟─ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
-# ╠═b0cdc9d6-738a-4583-b821-052ada846d39
 # ╠═fc64996f-54ba-4c7a-8cfb-21133cec1fbe
 # ╟─1f1e9c9b-e5fa-41b1-852f-cadad703ee4b
 # ╠═e3dbe2f5-7e97-45b7-9b75-1acaf8f1031b
 # ╟─39414e5e-1256-4497-9738-e2ecdff62d9d
-# ╠═7fa55e99-5c0c-465d-a879-bd844e516131
-# ╠═06dee467-1f54-48e1-908d-8e4c9028a748
+# ╟─06dee467-1f54-48e1-908d-8e4c9028a748
 # ╠═aa7b8b58-f959-47de-84d7-8c9cf3ad96be
+# ╟─267532b6-ba74-4e74-992a-6cabb03949a0
+# ╟─efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
+# ╠═2183e956-1b47-4e97-b957-c5df0541ff7b
+# ╟─3996d09f-c115-4097-b994-6f3f573912fc
 # ╟─6fb68c61-1ef0-4efc-bcbc-dd9d219c3ebb
-# ╠═a5733d6d-3025-41dc-b1d9-03174729399b
 # ╟─a9163072-cad9-4b0b-b154-d315c6b68de4
-# ╟─c50f50f4-84a3-4a81-bacc-b8ce99d6b257
-# ╠═efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
-# ╠═444e4eba-9b5a-4e37-8853-5d24c5c398ca
 # ╟─fe2c7c2b-63e3-4cbf-b432-b028ec599292
-# ╠═63d99d6f-addf-4efc-a680-d4c4733e3941
-# ╠═a2f40cbe-f46f-44c6-a81f-aae082c27c1a
-# ╠═e2890775-2e29-4244-adac-c37f8f2a8a8e
-# ╠═645525f1-77cb-4b18-81df-3eafc0b4004e
+# ╟─e2890775-2e29-4244-adac-c37f8f2a8a8e
+# ╠═9ce43ec1-78f5-414f-9796-ab3159be7985
 # ╟─a2466cba-65ea-41a4-b222-c397614453b2
 # ╟─73444608-d0de-440d-8be3-5a02dadcadc7
 # ╠═95f3bbad-1309-40c5-9da2-e1255a325d8b
@@ -3121,7 +3160,6 @@ version = "0.9.1+5"
 # ╠═2909ff18-e98b-4149-843f-1c4709cfbb37
 # ╟─ed7cb5c1-528a-4356-80dd-b337107eaf1f
 # ╟─1e12834c-4b29-41db-ab1f-d93db62c8341
-# ╠═99f04e24-e70f-422b-afae-6438877b99c0
 # ╠═09877b51-c34c-4351-ab8d-0fbee76d5a1b
 # ╟─ba59678b-1606-4132-9f19-0dae1e660195
 # ╠═dfebe8a3-fbe5-4381-bce5-1cd403a7b365
@@ -3133,47 +3171,43 @@ version = "0.9.1+5"
 # ╟─94a9846b-ff01-487d-aeac-ddd4ab81610c
 # ╟─d2e5bde1-8c65-494f-8944-b16dec6ab193
 # ╠═655c8b62-e180-41e6-a3b5-7317cdc76f73
+# ╟─6f2399db-24e7-4586-a93e-bdb38279470f
 # ╟─ea518070-cc7d-4a33-b9fd-082f7f1aeca1
 # ╠═82a245fa-6e02-41f4-bba4-769863a896db
+# ╟─cc67a1d7-f195-4deb-9b39-22e06a75283d
 # ╠═dda5a074-3f7b-46dd-bc4b-cb05117ec425
 # ╟─29fb4486-5605-438f-9b1a-a24a19b20c5e
 # ╠═f52b2954-6edb-48cc-8dc9-94a4ef613012
 # ╟─a96569a4-4ab2-4681-ab4f-fae744a0a671
-# ╠═2cf7fd33-2fda-4311-b699-c8441181b292
-# ╠═805d2824-86cc-45bd-88b0-e6e14d9fde48
-# ╠═10b73d22-cf2a-479c-84b6-6a63a694f398
 # ╟─5b237453-472f-414e-95e0-f44e980ea93a
 # ╠═ef43aef6-80ec-4976-91e6-84a74d29a83e
 # ╠═f75ad936-8c06-4e00-92d7-1f86532c0072
-# ╠═c75744a0-3c3f-4042-a796-6cbd9ec11195
-# ╠═2cc52188-b262-4f65-b042-ad94d90523d8
+# ╠═2cf7fd33-2fda-4311-b699-c8441181b292
 # ╠═b176823e-b8b5-413d-87b1-90d7efa0e377
+# ╟─c75744a0-3c3f-4042-a796-6cbd9ec11195
+# ╠═2cc52188-b262-4f65-b042-ad94d90523d8
+# ╠═c3d6b3f4-d8e2-4fff-b3fa-0421a09ded81
 # ╟─d8983a9d-1880-4dc4-9c17-23281767e0c2
 # ╠═5e7bda42-0266-4498-906d-9aca8b6c4bf3
+# ╠═805d2824-86cc-45bd-88b0-e6e14d9fde48
 # ╠═3f4bffbb-51f4-4446-9b9c-cd3f99edfefa
 # ╠═04c7209e-c4f8-454b-a883-cb2c5fac5203
+# ╠═7fa55e99-5c0c-465d-a879-bd844e516131
 # ╟─ddee1cf7-7977-407d-a004-08b52f6ff8c8
 # ╠═485c046d-8329-4541-bd9d-eb180c01bde6
 # ╠═b9318fcf-117e-438e-8bb4-985a9372e2d8
+# ╠═3731fa3f-efb3-43d1-900f-8582cd89d526
 # ╟─ba0545e7-c6df-42e2-a9cd-4ecd490d13e8
-# ╠═449f1aae-57b4-4b24-98d9-32c514e00821
 # ╠═510f07d9-62e0-40a7-b974-e2ae9bad7f73
 # ╠═905793d5-93c5-4d86-9a88-33d6d806d88a
-# ╠═c17da7e0-d701-45e6-9967-b2cb0d2b057e
-# ╠═d9a82c82-576e-4ee5-a8be-aea1332b3e74
-# ╠═b77903d1-c788-4efd-80c4-313859e856e5
-# ╠═01af74cf-172d-4561-a7d9-6131a22b4161
-# ╠═5def5552-fc0e-4e44-bed2-49edd810c75a
-# ╠═a2e8fdca-7f23-4f94-8b94-502ff29500bc
-# ╠═072bf511-749d-421b-8e56-d706da88f031
-# ╠═f6f3c9b7-dd9d-4f7b-9626-93534c15f199
+# ╠═10b73d22-cf2a-479c-84b6-6a63a694f398
 # ╟─318a6643-5377-4152-8468-51dae1b78144
+# ╠═4748a526-8d2e-43a6-8f30-82abf238d624
 # ╠═bddafce9-30e4-4708-96ae-938bff9edfe7
 # ╠═ebb0c754-12f1-4f80-a5f6-98a61b915fa6
-# ╠═53eab8ed-9a2d-4758-8d51-a74771e4f144
+# ╠═2d730c2f-7320-4879-b6a2-bee8c7c9b338
 # ╠═a5fe54fb-4f92-4a35-8038-8d36a4aa065c
 # ╠═86e58e39-186e-470f-832a-32cd86717daa
 # ╠═0a06b151-461a-470b-927b-851c64d826bf
-# ╠═4748a526-8d2e-43a6-8f30-82abf238d624
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
