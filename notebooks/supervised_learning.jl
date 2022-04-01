@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -79,11 +86,7 @@ let
     p = plot(; size=(550, 500))
     plot!(p, first.(line_trace_manual), last.(line_trace_manual); color=:blue)
     scatter!(
-        p,
-        Base.vect.(line_trace_manual[begin])...;
-        color=:black,
-        marker=:rtriangle,
-        ms=6,
+        p, Base.vect.(line_trace_manual[begin])...; color=:black, marker=:rtriangle, ms=6
     )
     plot!(
         p;
@@ -92,7 +95,7 @@ let
         aspect_ratio=1,
         xlabel=L"w_0",
         ylabel=L"w_1",
-		legend=false,
+        legend=false,
     )
 end
 
@@ -584,7 +587,7 @@ begin
     )
     max_order_input = @bind max_order Scrubbable(0:100; default=0)
     show_contour_input = @bind show_contour CheckBox(; default=false)
-	λ_input = @bind λ Scrubbable(exp10.([-Inf; -15:1:0]); default=0, format=".1g")
+    λ_input = @bind λ Scrubbable(exp10.([-Inf; -15:1:0]); default=0, format=".1g")
     thresh_input = @bind thresh Scrubbable(-4:0.01:4; default=0)
     nhidden1_input = @bind nhidden1 Scrubbable(0:10; default=0)
     nhidden2_input = @bind nhidden2 Scrubbable(0:10; default=0)
@@ -774,9 +777,6 @@ $(PlutoUI.Resource("https://svgshare.com/i/fky.svg", :width=>450))
 Number of hidden units = $nhidden2_input
 """
 
-# ╔═╡ c3d6b3f4-d8e2-4fff-b3fa-0421a09ded81
-HTML("<style )
-
 # ╔═╡ d8983a9d-1880-4dc4-9c17-23281767e0c2
 md"## Definitions"
 
@@ -850,16 +850,16 @@ end
 
 # ╔═╡ 905793d5-93c5-4d86-9a88-33d6d806d88a
 begin
-	error_actual = 0.2
-	ndata = 10
-	data_seed = 42
-	data_test_seed = 63
-	x = collect(range(0, 1; length=ndata))
-	y = generate_data(f, x, error_actual; rng=MersenneTwister(data_seed))
-	ytest = generate_data(f, x, error_actual; rng=MersenneTwister(data_test_seed))
-	xmore = collect(range(0, 1; length=50))
-	ymore = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_seed))
-	ymore_test = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_test_seed))
+    error_actual = 0.2
+    ndata = 10
+    data_seed = 42
+    data_test_seed = 63
+    x = collect(range(0, 1; length=ndata))
+    y = generate_data(f, x, error_actual; rng=MersenneTwister(data_seed))
+    ytest = generate_data(f, x, error_actual; rng=MersenneTwister(data_test_seed))
+    xmore = collect(range(0, 1; length=50))
+    ymore = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_seed))
+    ymore_test = generate_data(f, xmore, error_actual; rng=MersenneTwister(data_test_seed))
 end;
 
 # ╔═╡ a1ca71d8-2b2c-48de-8088-3cc32135fe5a
@@ -870,7 +870,7 @@ plot_data(x, y)
 
 # ╔═╡ 942f314e-927b-4371-8c83-83801c860b4d
 line_trace = let
-	step_length = 0.02
+    step_length = 0.02
     obj(w) = error(x -> w[1] + w[2] * x, x, y)
     winit = [0.3, -3.0]
     optimizer = Optim.GradientDescent(;
@@ -1032,8 +1032,8 @@ end
 
 # ╔═╡ 2d730c2f-7320-4879-b6a2-bee8c7c9b338
 function as_latex(f; varname=:x, fname="\\hat{f}")
-	var = Symbolics.Sym{Real}(varname)
-	return L"%$fname(x) = %$(latexify(simplify(f(var)); env=:raw))"
+    var = Symbolics.Sym{Real}(varname)
+    return L"%$fname(x) = %$(latexify(simplify(f(var)); env=:raw))"
 end
 
 # ╔═╡ a5fe54fb-4f92-4a35-8038-8d36a4aa065c
@@ -1068,7 +1068,7 @@ begin
     function as_latex(m::PolyModel; digits=2, kwargs...)
         w = round.(m.w; digits)
         mapprox = PolyModel(w, round(m.λ; digits))
-		return as_latex(x -> mapprox(x); kwargs...)
+        return as_latex(x -> mapprox(x); kwargs...)
     end
 
     function Base.show(io::IO, mime::MIME"text/latex", m::PolyModel)
@@ -1078,8 +1078,8 @@ end;
 
 # ╔═╡ 72198269-d070-493f-92eb-36135692ca8f
 let
-	f_hat(x) = w0
-    plot_data(x, y; f_hat, show_residuals=true, equation = as_latex(f_hat))
+    f_hat(x) = w0
+    plot_data(x, y; f_hat, show_residuals=true, equation=as_latex(f_hat))
 end
 
 # ╔═╡ 288aa7d7-8785-4f55-95e6-409e2ceb203a
@@ -1093,9 +1093,9 @@ end
 
 # ╔═╡ 1a906880-75e1-447b-9adf-31ae44f0135f
 begin
-	f_hat_line(x) = w0 + w1 * x
-	error_line = error(f_hat_line, x, y)
-	equation_line = as_latex(f_hat_line)
+    f_hat_line(x) = w0 + w1 * x
+    error_line = error(f_hat_line, x, y)
+    equation_line = as_latex(f_hat_line)
 end;
 
 # ╔═╡ 345ae96b-92c2-4ac4-bfdf-302113627ffb
@@ -1214,9 +1214,9 @@ function plot_poly_compare(x, y, ytest, max_order; λ=0)
         xlabel=L"n",
         ylabel=L"E_\mathrm{RMS}",
         xlims=(-0.5, max(max_order, 10.5)),
-		ylims=(-0.01, NaN),
+        ylims=(-0.01, NaN),
     )
-    plot(p, p2)
+    return plot(p, p2)
 end
 
 # ╔═╡ aa7b8b58-f959-47de-84d7-8c9cf3ad96be
@@ -3186,7 +3186,6 @@ version = "0.9.1+5"
 # ╠═b176823e-b8b5-413d-87b1-90d7efa0e377
 # ╟─c75744a0-3c3f-4042-a796-6cbd9ec11195
 # ╠═2cc52188-b262-4f65-b042-ad94d90523d8
-# ╠═c3d6b3f4-d8e2-4fff-b3fa-0421a09ded81
 # ╟─d8983a9d-1880-4dc4-9c17-23281767e0c2
 # ╠═5e7bda42-0266-4498-906d-9aca8b6c4bf3
 # ╠═805d2824-86cc-45bd-88b0-e6e14d9fde48
