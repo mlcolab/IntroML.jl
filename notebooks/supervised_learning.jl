@@ -7,14 +7,7 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try
-            Base.loaded_modules[Base.PkgId(
-                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
-                "AbstractPlutoDingetjes",
-            )].Bonds.initial_value
-        catch
-            b -> missing
-        end
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -43,7 +36,9 @@ end
 md"""
 # Supervised learning: One step at a time
 
-In this notebook, we slowly introduce [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning), along with basic machine learning concepts we encounter on the way.
+This notebook was created for the ML ⇌ Science  Colaboratory's workshop [Introduction to Machine Learning](https://mlcolab.org/intro-ml). 
+
+We here focus on [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning). As we progress from a simple linear regression to a first example of a neural network we introduce the basic concepts needed to understand machine learning.
 
 !!! note
 	This notebook is written using [Pluto](https://github.com/fonsp/Pluto.jl), a reactive notebook environment. If you're viewing this on the web, the interactive elements will be static, and this will not be as useful. Click "Edit or run this notebook" on the top right to find instructions for making it interactive. Note that because we load several heavy dependencies, Binder will likely not work.
@@ -61,8 +56,8 @@ It's useful to explore our data by plotting.
 # ╔═╡ 21a16ac9-f83e-46e8-81a2-09f79aa17eae
 md"""
 !!! note
-	For this model, this particular error function is proportional to the sample variance of ``y``, so the value of ``w_0`` that minimizes the error (i.e. variance) is the sample mean of ``y``!
-    When an article reports the sample mean value of observation, one way to interpret that is as a single-parameter model that models the observation as independent of any known or unknown features. 
+	For this model, this particular error function is proportional to the sample variance of ``y``, so the value of ``w_0`` that minimizes the error (i.e. variance) is the sample mean of ``y``! The mean observation ``w_0=\bar{y}`` is the most useful single-parameter model of a dataset (for this error measure).
+    When an article reports the sample mean of some observations, one way to interpret that is as a single-parameter model that models any and all observations as independent of any known or unknown features. This is a learned model but not one very exciting!
 """
 
 # ╔═╡ 67486053-5971-406b-8680-0d80803d797a
@@ -82,6 +77,7 @@ line_trace_manual = [
 ]
 
 # ╔═╡ d1cd6a46-dc5b-4188-a891-703b50bce186
+# stop marker at end? Maybe an empty box ☐, since it's a "provisory" endpoint
 let
     p = plot(; size=(550, 500))
     plot!(p, first.(line_trace_manual), last.(line_trace_manual); color=:blue)
@@ -106,7 +102,7 @@ md"""
 There are two problems with how we have been fitting parameters so far.
 First, it's manual.
 This won't scale to more than a few parameters.
-Second, coordinate descent fits 1 parameter at a time, when ideally we would fit all at the same time.
+Second, coordinate descent fits one parameter at a time, when ideally we would fit all at the same time (this is like taking diagonal shortcuts in the plot above).
 
 The good news is that we can automate this process!
 """
@@ -165,7 +161,7 @@ This is called [cross-validation](https://en.wikipedia.org/wiki/Cross-validation
 md"""
 ## Regularization
 
-It may seem a little strange that adding more weights can make the model worse, since the simpler model is contained within the more complex one.
+It may seem a little strange that adding more weights can make the model worse, since every simpler model is contained within all the more complex ones (e.g. the model ``w_0 + w_1 x`` can be had as ``w_0 + w_1 x + w_2 x^2`` just by setting ``w_2=0``).
 One way to understand this is to look at the fitted values of the weights as ``n`` increases.
 
 !!! question
@@ -218,7 +214,7 @@ See how where there is a clear separation of points from the two classes, the pr
 md"""
 ## A quick $(html"<s>costume</s>") notation change
 
-At some point writing out sums is tedious, and it's more convenient to work with matrix/vector notation.
+At some point writing out sums is tedious, and it's more convenient to work with matrix/vector notation. This new notation also makes evident why ML is so dependent on linear algebra.
 Let's slightly abuse notation by defining ``\hat{f}(x)`` as ``\hat{f}`` applied elementwise to each data point (row) in ``x``:
 
 ```math
@@ -255,9 +251,9 @@ md"""
 ### Fitting 2D data with neural networks
 
 Now that we have a generic framework for constructing neural networks, we can do the same thing for arbitrary numbers of features.
-For example, when we have two-dimensional data, such as points on a plane, we have two features.
+For example, when we have two-dimensional data, such as points on a plane, we have two features. For example, we may use water amount ``x[1]`` and total sunlight hours ``x[2]`` to predict whether a plant will be dead (``c=0``) or alive (``c=1``) after three months.
 
-For this we need a new dataset.
+Instead of switching our main interest to botany, we generate a new synthetic dataset.
 """
 
 # ╔═╡ cc67a1d7-f195-4deb-9b39-22e06a75283d
@@ -295,14 +291,22 @@ important(text) = HTML("""<span style="color:orange"><strong>$text</strong></spa
 md"""
 ## The data
 
-At regularly spaced 1-dimensional points ``x``, we have generated fake, noisy 1-dimensional observations ``y``.
-We assume that there is some true but unknown underlying process ``f``, so that
-```math
-y_i = f(x_i) + \mathrm{noise}.
-```
+We are going to work with a collection of ``10`` observations or ``y``-values, for example, _the heights of a plant in ``{\rm m}``_. For each of them we get as potentially useful information an ``x``-value, for example _the amount of water the plant received over a certain period, in ``{\rm l}``_.
 
-``x_i`` is a single $(important("raw feature")).
-``y_i`` is an $(important("output")) or continuous $(important("label")).
+In this setting, each individual pair ``(x_i, y_i)`` is called an $(important("instance")) or $(important("example")). All ten datapoints form our $(important("dataset")) ``\mathcal{D}:=\{(x_i,y_i),\ \ i=1\ldots 10\}``. Each ``x_i`` is a $(important("feature")) or $(important("attribute")) value and considered an input, while each ``y_i`` is a $(important("label")) or $(important("response")), and considered an output.
+"""
+
+# ╔═╡ 435c9f3b-640a-4f54-a836-05fde7ef51a2
+md"""
+Our goal will be to use this data to learn a relationship between ``x``-values (water) and ``y`` values (plant height) that $(important("generalizes")), i.e. such that if we are given some new ``x``-value,we can do a decent job at predicting the corresponding ``y``-value. In mathematical terminology, we seek to find a function ``y=\hat{f}(x)``. In ML we call this function a $(important("model")) and our goal in ML is to devise ways to learn models automatically from the data -- or $(important("learning algorithms")). Let's explore how to build ML algorithms together!
+
+
+!!! note 
+    No plants were harmed to generate dataset ``\mathcal{D}``. Instead of 	 measuring water amounts and plant heights, we generated ten ``x_i`` at regular intervals and used a function ``f`` (that we keep secret from you) to generate ``y``:
+    ```math 
+    y_i=f(x_i) + \mathrm{noise}.
+    ```
+    These "invented" outputs ``f(x_i)`` also received some noise to reflect measurement errors.
 """
 
 # ╔═╡ 48f03e74-1e25-41b8-a21c-fd810fadc2cf
@@ -331,7 +335,7 @@ md"""
 Each step the computer takes is in a direction perpendicular to the level curve of the error function at that point.
 This is the direction of steepest descent, which is the negative of the derivative of the error function with respect to the weights (i.e. the gradient) at that point.
 
-For any set of weights, a modern machine learning package can automatically compute this direction using a method called $(important("backpropagation")) (AKA reverse-mode [automatic differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation)), where it approximates how much each parameter is responsible for the error and should therefore change to minimize the error.
+For any set of weights (and almost any model), a modern machine learning package can automatically compute this direction using a method called $(important("backpropagation")) (AKA reverse-mode [automatic differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation)), where it approximates how much each parameter is responsible for the error and should therefore change to minimize the error.
 
 This isn't enough though to train the model.
 We also need to know how much to change each weight (i.e., how far to step).
@@ -398,9 +402,9 @@ We don't know, as our model contains no measure of uncertainty of fit.
 Regression models are statistical models, and specifically, we can write them as Bayesian models.
 In a $(important("Bayesian")) model (AKA a "probabilistic model"), uncertainties are quantified with probabilities.
 
-Bayesian models combine a likelihood function (i.e. our error function) with a prior on the model parameters (i.e. our regularization term), which defines a joint distribution of parameters (i.e. our weights) given the data, called a $(important("posterior distribution")).
+Bayesian models combine a likelihood function (i.e. our error function) with a prior on the model parameters (i.e. our regularization term), which define together a joint distribution of parameters (i.e. our weights) given the data, called a $(important("posterior distribution")).
 
-For our linear regression model, with 2 degrees of freedom, we can visualize draws from this distribution vs the single best fit.
+For our linear regression model, with 2 degrees of freedom, we can visualize draws from this distribution vs. the single best fit.
 """
 
 # ╔═╡ b0773555-44ac-4b06-a410-d25ee1f42399
@@ -408,7 +412,7 @@ md"""
 Interestingly, our overparametrized model has quite a wide ensemble, since many possible curves are able to almost pass through our training data.
 Similarly, our underparametrized models likewise have a wider ensemble, as many linear fits have similar errors, while for ``n=3``, the ensemble is quite tight. 
 
-Bayesian models are very useful for certain problems and have a set of distinct advantages and disadvantages.
+Bayesian models are very useful for certain problems and have distinct advantages and disadvantages.
 
 Advantages:
 - We can incorporate prior information in a principled way (i.e. we have rules for setting the amount of regularization)
@@ -463,7 +467,7 @@ Here are 3 useful functions that transform the real line to the positive numbers
 
 # ╔═╡ ed7cb5c1-528a-4356-80dd-b337107eaf1f
 md"""
-## Regression for classification problems
+## Hijacking regression for classification
 
 Suppose some expert looked at our ``y`` values and assigned a label to each depending on whether they were above or below some threshold ``t``.
 Since ``y`` is noisy, the expert may be less certain how to assign values close to ``t``.
@@ -498,7 +502,7 @@ Our model is then
 	\hat{f}(x_i; w) = \sigma\left( \sum_{j=1}^n w_j g_j(x_i)\right).
 	```
 
-Suppose we interpret the discrete class labels as absolutely confident probabilities, i.e. ``c==1`` could be interpreted as ``p(y > t) = 1``, while ``c=0`` could be interpreted as ``p(y > t) = 0``.
+Suppose we interpret the discrete class labels as absolutely confident probabilities, i.e. ``c=1`` could be interpreted as ``p(y > t) = 1``, while ``c=0`` could be interpreted as ``p(y > t) = 0``.
 In this case, we could use the exact same model to perform classification, but instead of predicting binary classes it predicts probabilities of assignment to each class.
 These probabilities are more useful than the class labels themselves, because we can more easily identify when our model has a hard time making a prediction, and we can always use thresholding to turn our probabilities into class predictions.
 
@@ -557,6 +561,8 @@ $(PlutoUI.Resource("https://svgshare.com/i/fmy.svg", :width=>450))
 Each node in the network is called a $(important("unit")) or $(important("neuron")) and corresponds to a single input feature, computed feature, or output label.
 Each edge is a single weight in a weight matrix.
 
+The data progresses through different stages, called $(important("layers")). The first layer is where features are input to the model. These can be raw features; the subsequent layers refine suitable features for the output layer at the end to match the training data. Layers between input and output are termed $(important("hidden layers"))
+
 The collection of all features before or after a single function evaluation are called $(important("layers")).
 Besides the input layer and output layer, all layers in the middle are termed hidden layers.
 """
@@ -612,7 +618,7 @@ Once we fix the value of ``w_0``, it is called a $(important("trained model")).
 
 Training is just the process of setting ``w_0`` to achieve some goal.
 
-Drag the slider below to adjust ``w_0``.
+Drag the slider below (or press ←/→) to adjust ``w_0``.
 
 ``w_0=`` $w0_input
 
@@ -630,7 +636,7 @@ Here, we choose a "sum-of-squares" error function:
 E(w) = \frac{1}{2}\sum_{i=1}^n (\hat{f}(x_i; w) - y_i)^2
 ````
 
-``E(w) = 0`` when ``\hat{f}`` is perfectly able to predict ``y`` from ``x``.
+``E(w) = 0`` when ``\hat{f}`` is perfectly able to predict each ``y_i`` from it's feature ``x_i``.
 
 Now drag the value of ``w_0`` until you've minimized the error shown at the top of the below plot.
 
@@ -645,13 +651,16 @@ For a better fit, let's give the line not only an intercept ``w_0`` but also als
 
 !!! model
 	````math
-	\hat{f}(x_i; w) = w_0 + w_1 x_i
+	\text{model}:\quad \hat{f}(x_i; w) = w_0 + w_1 x_i
 	````
 
-This model now has two degrees of freedom, which we can arrange in a $(important("weight")) or $(important("internal parameter")) vector ``w = \begin{pmatrix}w_0 \\ w_1\end{pmatrix}``.
+This model now has two degrees of freedom, which we can arrange in a $(important("weight")) vector ``w = \begin{pmatrix}w_0 \\ w_1\end{pmatrix}``.
+
+Note: weights are one common type of $(important("internal parameters")) of ML models. In this notebook, all internal parameters can be interpreted as weights.
+
 This is an example of $(important("linear regression")).
 
-``w_0`` is often called an $(important("intercept")) or $(important("bias")) term, since it shifts the output of the function.
+``w_0`` is often called an $(important("intercept")) or $(important("bias")) term; it shifts the output of the function vertically.
 
 Drag the below values to minimize the loss.
 How low can you get the error?
@@ -661,7 +670,7 @@ How low can you get the error?
 
 # ╔═╡ b657b5fe-af35-46e9-93c7-f897e7b22ddc
 md"""
-Because we have two weights, our parameter space is 2-dimensional.
+Because we now have two weights, our parameter space is 2-dimensional.
 So we can equivalently plot the combination of weights on a 2D grid with a readout of the error and just move the values around until the error is minimized:
 
 ``w^\top = (`` $w0_input ``, `` $w1_input ``)``
@@ -672,7 +681,7 @@ md"""
 Let's overlay the computer-generated trajectory on our manual one.
 
 !!! question
-	Can you tell what strategy the computer is using to minimize the error? What about if you view the contours of the error function?
+	Can you tell what strategy the computer is using to minimize the error? What about if you show the contours of the error function?
 
 Show error: $show_contour_input
 """
@@ -685,18 +694,18 @@ _This section is inspired by Section 1.1 of [Pattern recognition and machine lea
 
 ### Scaling the model up by trial-and-error
 
-Fitting the model gave us the best fitting line, but we think we can do better.
+Training the model gave us the best fitting line, but we think we can do better.
 To do this, we need to allow ``\hat{f}`` to take more complex shapes.
 
 One way we can do this is by defining ``\hat{f}`` as the weighted sum of simpler functions ``g_j``:
 
 !!! model
 	```math
-	\hat{f}(x_i; w) = w_1 g_1(x_i) + w_2 g_2(x_i) + \ldots + w_n g_n(x_i) = \sum_{j=1}^n w_j g_j(x_i).
+	\hat{f}(x; w) = w_1 g_1(x) + w_2 g_2(x) + \ldots + w_n g_n(x) = \sum_{j=1}^n w_j g_j(x).
 	```
 
-Remember that we called ``x_i`` a raw feature.
-``g_j(x_i)`` is called a $(important("computed feature")), and so we now have ``n`` computed features for each initial raw feature.
+So far, we were working with ``x`` only, and this is what we may call a $(important("raw feature")), because we did not process it in any way -- it comes straight from the data. However, 
+``g_j(x)`` are calculated from ``x``, and so we now have ``n`` $(important("computed features")) from our initial raw feature.
 Note that if ``g_j`` is a nonlinear function of ``x``, then ``\hat{f}`` is a nonlinear function of ``x`` but still a linear function of the weight vector ``w``.
 
 Let's try selecting some useful scalar functions to add to ``g`` below.
@@ -731,7 +740,7 @@ For example, we can let ``g_j(x) = x^j``, so that
 Functions of the form of ``\hat{f}`` are called $(important("polynomials")), and many functions (specifically, [analytic](https://en.wikipedia.org/wiki/Analytic_function) functions) can be exactly computed with infinite terms (i.e. ``n \to \infty``) or approximated with finite terms (by picking some manageable ``n``).
 Fitting these polynomial models is called $(important("polynomial regression")).
 
-Our line with two degrees of freedom is the special case ``n=1``, though note again that here ``\hat{f}`` is still linear with respect to the weights ``w`` (i.e. this is still linear regression)
+Our line with two degrees of freedom is the special case ``n=1``, though note again that here ``\hat{f}`` is still linear with respect to the weights ``w`` (i.e. this is still _linear_ regression)
 
 !!! question
 	What happens as we increase the maximum order ``n``?
@@ -766,7 +775,7 @@ Number of hidden units = $nhidden1_input
 # ╔═╡ 29fb4486-5605-438f-9b1a-a24a19b20c5e
 md"""
 Sure, we could fit this data with logistic regression if we chose the right computed features.
-Importantly, it is not possible to fit this data if we only user linear features.
+Importantly, it is not possible to fit this data if we only use linear features.
 But we can also fit this data with a neural net, which would compute the features for us, reusing the same architecture we defined above and only adding a second input feature.
 
 $(PlutoUI.Resource("https://svgshare.com/i/fky.svg", :width=>450))
@@ -1027,7 +1036,7 @@ let
     p = plot_data(x, y; f_hat, show_residuals=true)
     lex = latexify(f_hat_sym(Symbolics.Sym{Real}(:x)); env=:raw)
     annotate!(p, [(minimum(x), maximum(y), ("\$\\hat{f}(x)=$lex\$", :left, :top))])
-    plot!(p; title="\$E = $err \$")
+    plot!(p; title="\$E(w_\\mathrm{opt}) = $err \$")
 end
 
 # ╔═╡ 2d730c2f-7320-4879-b6a2-bee8c7c9b338
@@ -1088,7 +1097,7 @@ let
     loss = round(error(f_hat, x, y); digits=2)
     equation = as_latex(PolyModel([w0]); digits=3)
     p = plot_data(x, y; f_hat, show_residuals=true, equation)
-    plot!(p; title="\$ E= $loss \$")
+    plot!(p; title="\$ E(w_0)= $loss \$")
 end
 
 # ╔═╡ 1a906880-75e1-447b-9adf-31ae44f0135f
@@ -1107,7 +1116,7 @@ end
 # ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
 let
     scatter([w0], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
-    plot!(; title=L"E= %$(round(error_line; digits=2))", xlabel=L"w_0", ylabel=L"w_1")
+    plot!(; title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))", xlabel=L"w_0", ylabel=L"w_1")
 end
 
 # ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db
@@ -1349,9 +1358,8 @@ Turing = "~0.21.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.8.0-beta1"
+julia_version = "1.7.2"
 manifest_format = "2.0"
-project_hash = "addb13b0aea7688f4fe00d84034f44c777be88f4"
 
 [[deps.AbstractAlgebra]]
 deps = ["GroupsCore", "InteractiveUtils", "LinearAlgebra", "MacroTools", "Markdown", "Random", "RandomExtensions", "SparseArrays", "Test"]
@@ -1425,7 +1433,6 @@ version = "2.3.0"
 
 [[deps.ArgTools]]
 uuid = "0dad84c5-d112-42e6-8d28-ef12dabb789f"
-version = "1.1.1"
 
 [[deps.ArrayInterface]]
 deps = ["Compat", "IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
@@ -1449,9 +1456,9 @@ version = "1.0.1"
 
 [[deps.AxisArrays]]
 deps = ["Dates", "IntervalSets", "IterTools", "RangeArrays"]
-git-tree-sha1 = "d127d5e4d86c7680b20c35d40b503c74b9a39b5e"
+git-tree-sha1 = "cf6875678085aed97f52bfc493baaebeb6d40bcb"
 uuid = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
-version = "0.4.4"
+version = "0.4.5"
 
 [[deps.BFloat16s]]
 deps = ["LinearAlgebra", "Printf", "Random", "Test"]
@@ -1580,7 +1587,6 @@ version = "3.42.0"
 [[deps.CompilerSupportLibraries_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae"
-version = "0.5.0+0"
 
 [[deps.CompositeTypes]]
 git-tree-sha1 = "d5b014b216dc891e81fea299638e4c10c657b582"
@@ -1697,9 +1703,8 @@ uuid = "5b8099bc-c8ec-5219-889f-1d9e522a28bf"
 version = "0.5.9"
 
 [[deps.Downloads]]
-deps = ["ArgTools", "FileWatching", "LibCURL", "NetworkOptions"]
+deps = ["ArgTools", "LibCURL", "NetworkOptions"]
 uuid = "f43a241f-c20a-4ad4-852c-f6b1247861c6"
-version = "1.6.0"
 
 [[deps.DualNumbers]]
 deps = ["Calculus", "NaNMath", "SpecialFunctions"]
@@ -1727,9 +1732,9 @@ version = "2.2.3+0"
 
 [[deps.EllipsisNotation]]
 deps = ["ArrayInterface"]
-git-tree-sha1 = "d7ab55febfd0907b285fbf8dc0c73c0825d9d6aa"
+git-tree-sha1 = "d064b0340db45d48893e7604ec95e7a2dc9da904"
 uuid = "da5c29d0-fa7d-589e-88eb-ea29b0a81949"
-version = "1.3.0"
+version = "1.5.0"
 
 [[deps.EllipticalSliceSampling]]
 deps = ["AbstractMCMC", "ArrayInterface", "Distributions", "Random", "Statistics"]
@@ -1771,9 +1776,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "c6033cc3892d0ef5bb9cd29b7f2f0331ea5184ea"
 uuid = "f5851436-0d7a-5f13-b9de-f02708fd171a"
 version = "3.3.10+0"
-
-[[deps.FileWatching]]
-uuid = "7b1f6079-737a-58dc-b8bc-7a2ca5c1b5ee"
 
 [[deps.FillArrays]]
 deps = ["LinearAlgebra", "Random", "SparseArrays", "Statistics"]
@@ -1899,9 +1901,9 @@ version = "1.0.2"
 
 [[deps.Groebner]]
 deps = ["AbstractAlgebra", "Combinatorics", "Logging", "MultivariatePolynomials", "Primes", "Random"]
-git-tree-sha1 = "585db15083afd8b105d611af8723fe5b245fc928"
+git-tree-sha1 = "18e3139ab69bfc03a8609027fd0e5572a5cffe6e"
 uuid = "0b43b601-686d-58a3-8a1c-6623616c7cd4"
-version = "0.2.1"
+version = "0.2.3"
 
 [[deps.GroupsCore]]
 deps = ["Markdown", "Random"]
@@ -1970,6 +1972,11 @@ deps = ["LinearAlgebra", "Test"]
 git-tree-sha1 = "50b41d59e7164ab6fda65e71049fee9d890731ff"
 uuid = "505f98c9-085e-5b2c-8e89-488be7bf1f34"
 version = "0.3.0"
+
+[[deps.IntegerMathUtils]]
+git-tree-sha1 = "f366daebdfb079fd1fe4e3d560f99a0c892e15bc"
+uuid = "18e54dd8-cb9d-406c-a71d-865a43cbb235"
+version = "0.1.0"
 
 [[deps.IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2097,9 +2104,9 @@ version = "1.8.0"
 
 [[deps.Latexify]]
 deps = ["Formatting", "InteractiveUtils", "LaTeXStrings", "MacroTools", "Markdown", "Printf", "Requires"]
-git-tree-sha1 = "4f00cc36fede3c04b8acf9b2e2763decfdcecfa6"
+git-tree-sha1 = "6f14549f7760d84b2db7a9b10b88cd3cc3025730"
 uuid = "23fbe1c1-3f47-55db-b15f-69d7ec21a316"
-version = "0.15.13"
+version = "0.15.14"
 
 [[deps.LazyArtifacts]]
 deps = ["Artifacts", "Pkg"]
@@ -2114,12 +2121,10 @@ version = "0.1.3"
 [[deps.LibCURL]]
 deps = ["LibCURL_jll", "MozillaCACerts_jll"]
 uuid = "b27032c2-a3e7-50c8-80cd-2d36dbcbfd21"
-version = "0.6.3"
 
 [[deps.LibCURL_jll]]
 deps = ["Artifacts", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Zlib_jll", "nghttp2_jll"]
 uuid = "deac9b47-8bc7-5906-a0fe-35ac56dc84c0"
-version = "7.81.0+0"
 
 [[deps.LibGit2]]
 deps = ["Base64", "NetworkOptions", "Printf", "SHA"]
@@ -2128,7 +2133,6 @@ uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 [[deps.LibSSH2_jll]]
 deps = ["Artifacts", "Libdl", "MbedTLS_jll"]
 uuid = "29816b5a-b9ab-546f-933c-edad1886dfa8"
-version = "1.10.2+0"
 
 [[deps.Libdl]]
 uuid = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
@@ -2260,7 +2264,6 @@ version = "1.0.3"
 [[deps.MbedTLS_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
-version = "2.28.0+0"
 
 [[deps.Measures]]
 git-tree-sha1 = "e498ddeee6f9fdb4551ce855a46f54dbd900245f"
@@ -2296,7 +2299,6 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[deps.MozillaCACerts_jll]]
 uuid = "14a3606d-f60d-562e-9121-12d972cd8159"
-version = "2022.2.1"
 
 [[deps.MultivariatePolynomials]]
 deps = ["DataStructures", "LinearAlgebra", "MutableArithmetics"]
@@ -2346,7 +2348,6 @@ version = "1.0.0"
 
 [[deps.NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"
-version = "1.2.0"
 
 [[deps.OffsetArrays]]
 deps = ["Adapt"]
@@ -2363,12 +2364,10 @@ version = "1.3.5+1"
 [[deps.OpenBLAS_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "Libdl"]
 uuid = "4536629a-c528-5b80-bd46-f80d51c5b363"
-version = "0.3.17+2"
 
 [[deps.OpenLibm_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
-version = "0.8.1+0"
 
 [[deps.OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2419,9 +2418,9 @@ version = "0.12.3"
 
 [[deps.Parsers]]
 deps = ["Dates"]
-git-tree-sha1 = "85b5da0fa43588c75bb1ff986493443f821c70b7"
+git-tree-sha1 = "621f4f3b4977325b9128d5fae7a8b4829a0c2222"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "2.2.3"
+version = "2.2.4"
 
 [[deps.Pixman_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -2432,7 +2431,6 @@ version = "0.40.1+0"
 [[deps.Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-version = "1.8.0"
 
 [[deps.PlotThemes]]
 deps = ["PlotUtils", "Requires", "Statistics"]
@@ -2454,9 +2452,9 @@ version = "1.27.4"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "Markdown", "Random", "Reexport", "UUIDs"]
-git-tree-sha1 = "bf0a1121af131d9974241ba53f601211e9303a9e"
+git-tree-sha1 = "670e559e5c8e191ded66fa9ea89c97f10376bb4c"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-version = "0.7.37"
+version = "0.7.38"
 
 [[deps.PooledArrays]]
 deps = ["DataAPI", "Future"]
@@ -2483,9 +2481,10 @@ uuid = "08abe8d2-0d0c-5749-adfa-8a2ac140af0d"
 version = "1.3.1"
 
 [[deps.Primes]]
-git-tree-sha1 = "984a3ee07d47d401e0b823b7d30546792439070a"
+deps = ["IntegerMathUtils"]
+git-tree-sha1 = "747f4261ebe38a2bc6abf0850ea8c6d9027ccd07"
 uuid = "27ebfcd6-29c5-5fa9-bf4b-fb8fc14df3ae"
-version = "0.5.1"
+version = "0.5.2"
 
 [[deps.Printf]]
 deps = ["Unicode"]
@@ -2628,7 +2627,6 @@ version = "0.5.3"
 
 [[deps.SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
-version = "0.7.0"
 
 [[deps.SciMLBase]]
 deps = ["ArrayInterface", "CommonSolve", "ConstructionBase", "Distributed", "DocStringExtensions", "IteratorInterfaceExtensions", "LinearAlgebra", "Logging", "RecipesBase", "RecursiveArrayTools", "StaticArrays", "Statistics", "Tables", "TreeViews"]
@@ -2727,9 +2725,9 @@ version = "0.33.16"
 
 [[deps.StatsFuns]]
 deps = ["ChainRulesCore", "HypergeometricFunctions", "InverseFunctions", "IrrationalConstants", "LogExpFunctions", "Reexport", "Rmath", "SpecialFunctions"]
-git-tree-sha1 = "25405d7016a47cf2bd6cd91e66f4de437fd54a07"
+git-tree-sha1 = "72e6abd6fc9ef0fa62a159713c83b7637a14b2b8"
 uuid = "4c63d2b9-4356-54db-8cca-17b64c39e42c"
-version = "0.9.16"
+version = "0.9.17"
 
 [[deps.StructArrays]]
 deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
@@ -2756,7 +2754,6 @@ version = "4.3.1"
 [[deps.TOML]]
 deps = ["Dates"]
 uuid = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
-version = "1.0.0"
 
 [[deps.TableTraits]]
 deps = ["IteratorInterfaceExtensions"]
@@ -2773,7 +2770,6 @@ version = "1.7.0"
 [[deps.Tar]]
 deps = ["ArgTools", "SHA"]
 uuid = "a4e569a6-e804-4fa4-b0f3-eef7a1d5b13e"
-version = "1.10.0"
 
 [[deps.TermInterface]]
 git-tree-sha1 = "7aa601f12708243987b88d1b453541a75e3d8c7a"
@@ -3025,7 +3021,6 @@ version = "0.9.4"
 [[deps.Zlib_jll]]
 deps = ["Libdl"]
 uuid = "83775a58-1f1d-513f-b197-d71354ab007a"
-version = "1.2.12+1"
 
 [[deps.Zstd_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -3054,7 +3049,6 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl", "OpenBLAS_jll"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.0.1+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -3077,12 +3071,10 @@ version = "1.3.7+1"
 [[deps.nghttp2_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850ede-7688-5339-a07c-302acd2aaf8d"
-version = "1.41.0+1"
 
 [[deps.p7zip_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "3f19e933-33d8-53b3-aaab-bd5110c3b7a0"
-version = "16.2.1+1"
 
 [[deps.x264_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -3107,6 +3099,7 @@ version = "0.9.1+5"
 # ╟─2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
 # ╟─18198312-54c3-4b4f-b865-3a6a775ce483
 # ╠═a1ca71d8-2b2c-48de-8088-3cc32135fe5a
+# ╟─435c9f3b-640a-4f54-a836-05fde7ef51a2
 # ╟─31b1a0e4-216f-4c90-b16e-f542000c8aee
 # ╠═1b4812d4-3879-4a79-a95d-20cad2959f5c
 # ╟─48f03e74-1e25-41b8-a21c-fd810fadc2cf
@@ -3118,16 +3111,16 @@ version = "0.9.1+5"
 # ╟─ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 # ╠═345ae96b-92c2-4ac4-bfdf-302113627ffb
 # ╠═1a906880-75e1-447b-9adf-31ae44f0135f
-# ╟─b657b5fe-af35-46e9-93c7-f897e7b22ddc
+# ╠═b657b5fe-af35-46e9-93c7-f897e7b22ddc
 # ╠═0d1164df-8236-494b-b8b9-71481c94c0d9
 # ╟─def60ead-a40b-4376-82cd-a77455f6b942
 # ╠═67486053-5971-406b-8680-0d80803d797a
 # ╠═d1cd6a46-dc5b-4188-a891-703b50bce186
 # ╟─7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
-# ╠═942f314e-927b-4371-8c83-83801c860b4d
-# ╟─2eb005a3-f5b2-4216-b56f-e25157b8c33c
+# ╟─942f314e-927b-4371-8c83-83801c860b4d
+# ╠═2eb005a3-f5b2-4216-b56f-e25157b8c33c
 # ╠═6016a736-11da-4451-aa82-cc3045e782db
-# ╟─6f75889b-1c7f-4261-bf27-7c991ee9e414
+# ╠═6f75889b-1c7f-4261-bf27-7c991ee9e414
 # ╟─74290eff-781b-44c9-8a90-96bffbe040df
 # ╠═34bad558-e70f-4d46-a9ab-7acc6c89db7a
 # ╟─9049eeca-0db8-41d2-93ee-e0b4e445c9fd
@@ -3144,7 +3137,7 @@ version = "0.9.1+5"
 # ╟─efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
 # ╠═2183e956-1b47-4e97-b957-c5df0541ff7b
 # ╟─3996d09f-c115-4097-b994-6f3f573912fc
-# ╟─6fb68c61-1ef0-4efc-bcbc-dd9d219c3ebb
+# ╠═6fb68c61-1ef0-4efc-bcbc-dd9d219c3ebb
 # ╟─a9163072-cad9-4b0b-b154-d315c6b68de4
 # ╟─fe2c7c2b-63e3-4cbf-b432-b028ec599292
 # ╟─e2890775-2e29-4244-adac-c37f8f2a8a8e
@@ -3155,7 +3148,7 @@ version = "0.9.1+5"
 # ╠═d462dc39-f90b-4429-b6b5-7ded05fa3432
 # ╟─a1671960-9b0b-47f2-8d3a-74d67a122ce0
 # ╠═8ea2e159-ef17-4ddd-b5a7-5f6c8d67238a
-# ╟─b0773555-44ac-4b06-a410-d25ee1f42399
+# ╠═b0773555-44ac-4b06-a410-d25ee1f42399
 # ╟─df8f0019-84b9-4309-ab16-4a909fa94e88
 # ╠═2909ff18-e98b-4149-843f-1c4709cfbb37
 # ╟─ed7cb5c1-528a-4356-80dd-b337107eaf1f
@@ -3176,7 +3169,7 @@ version = "0.9.1+5"
 # ╠═82a245fa-6e02-41f4-bba4-769863a896db
 # ╟─cc67a1d7-f195-4deb-9b39-22e06a75283d
 # ╠═dda5a074-3f7b-46dd-bc4b-cb05117ec425
-# ╟─29fb4486-5605-438f-9b1a-a24a19b20c5e
+# ╠═29fb4486-5605-438f-9b1a-a24a19b20c5e
 # ╠═f52b2954-6edb-48cc-8dc9-94a4ef613012
 # ╟─a96569a4-4ab2-4681-ab4f-fae744a0a671
 # ╟─5b237453-472f-414e-95e0-f44e980ea93a
