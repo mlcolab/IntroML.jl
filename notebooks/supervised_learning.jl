@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -261,7 +268,7 @@ begin
         Turing
     using Turing: Flat
     Plots.theme(:default; msw=0, ms=3, lw=2, framestyle=:grid, guidefontsize=14)
-	custom_style  # force style to appear at the top
+    custom_style  # force style to appear at the top
 end
 
 # ╔═╡ d1cd6a46-dc5b-4188-a891-703b50bce186
@@ -281,7 +288,14 @@ let
         ylabel=L"w_1",
         legend=false,
     )
-	scatter!(p, Base.vect.(line_trace_manual[end])...; color=:black, marker=:square, ms=4, label="")
+    scatter!(
+        p,
+        Base.vect.(line_trace_manual[end])...;
+        color=:black,
+        marker=:square,
+        ms=4,
+        label="",
+    )
 end
 
 # ╔═╡ 2909ff18-e98b-4149-843f-1c4709cfbb37
@@ -1156,13 +1170,17 @@ end;
 # ╔═╡ 345ae96b-92c2-4ac4-bfdf-302113627ffb
 let
     p = plot_data(x, y; f_hat=f_hat_line, show_residuals=true, equation=equation_line)
-	plot!(p; title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))")
+    plot!(p; title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))")
 end
 
 # ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
 let
     scatter([w0], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
-    plot!(; title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))", xlabel=L"w_0", ylabel=L"w_1")
+    plot!(;
+        title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))",
+        xlabel=L"w_0",
+        ylabel=L"w_1",
+    )
 end
 
 # ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db
@@ -1203,7 +1221,14 @@ let
     )
     w = fit!(PolyModel(1), x, y).w
     scatter!(p, [w[1]], [w[2]]; color=:black, marker=:square, ms=4, label="")
-	scatter!(p, Base.vect.(line_trace_manual[end])...; color=:black, marker=:square, ms=4, label="")
+    scatter!(
+        p,
+        Base.vect.(line_trace_manual[end])...;
+        color=:black,
+        marker=:square,
+        ms=4,
+        label="",
+    )
     plot!(
         p;
         xlims=(-2.1, 4.1),
