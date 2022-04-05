@@ -36,4 +36,4 @@ makedocs(;
     pages=["Home" => "index.md"],
 )
 
-deploydocs(; repo="github.com/mlcolab/IntroML.jl", devbranch="main")
+deploydocs(; repo="github.com/mlcolab/IntroML.jl", devbranch="main", push_preview=true)
