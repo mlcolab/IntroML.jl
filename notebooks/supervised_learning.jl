@@ -14,24 +14,6 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ ef43aef6-80ec-4976-91e6-84a74d29a83e
-begin
-    using DataFrames,
-        Flux,
-        LinearAlgebra,
-        Latexify,
-        LaTeXStrings,
-        LogExpFunctions,
-        Optim,
-        Plots,
-        PlutoUI,
-        Random,
-        Symbolics,
-        Turing
-    using Turing: Flat
-    Plots.theme(:default; msw=0, ms=3, lw=2, framestyle=:grid, guidefontsize=14)
-end
-
 # ╔═╡ 2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
 md"""
 # Supervised learning: One step at a time
@@ -82,25 +64,6 @@ line_trace_manual = [
     [1.101, 0.5],
     [0.96, 0.5],
 ]
-
-# ╔═╡ d1cd6a46-dc5b-4188-a891-703b50bce186
-# stop marker at end? Maybe an empty box ☐, since it's a "provisory" endpoint
-let
-    p = plot(; size=(550, 500))
-    plot!(p, first.(line_trace_manual), last.(line_trace_manual); color=:blue)
-    scatter!(
-        p, Base.vect.(line_trace_manual[begin])...; color=:black, marker=:rtriangle, ms=6
-    )
-    plot!(
-        p;
-        xlims=(-2.1, 4.1),
-        ylims=(-3.1, 2.1),
-        aspect_ratio=1,
-        xlabel=L"w_0",
-        ylabel=L"w_1",
-        legend=false,
-    )
-end
 
 # ╔═╡ 7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
 md"""
@@ -177,7 +140,7 @@ One way to understand this is to look at the fitted values of the weights as ``n
 
 # ╔═╡ a2466cba-65ea-41a4-b222-c397614453b2
 md"""
-Think for a second about the effect of ``\lambda``.
+Think for a moment about the effect of ``\lambda``.
 We increase its value because we *a priori* expect the wild oscillations to be unreasonable.
 That is, ``\lambda`` is one way to incorporate prior information (i.e. domain expertise or intuition) about smoothness into our model.
 
@@ -190,27 +153,8 @@ In regression models, the weights are interpretable, but suppose we are not prim
 Since each sampled ``w`` defines a ``\hat{f}``, we could visualize the same distribution by plotting an ensemble of curves.
 
 We can think of each curve as a hypothesis, and the variability in the ensemble reflects the uncertainty we have about which hypothesis is most consistent with all of the information we have used.
+Again, we plot the single best fitting curve with a white border.
 """
-
-# ╔═╡ 2909ff18-e98b-4149-843f-1c4709cfbb37
-let
-    funs = [exp, x -> -exp(x), tanh]
-    plots = map(funs) do f
-        lex = latexify(f(Symbolics.Sym{Real}(:z)); env=:raw)
-        plot(f; xlabel=L"z", ylabel=L"%$lex", label="")
-    end
-    plot(plots...; link=:both)
-end
-
-# ╔═╡ dfebe8a3-fbe5-4381-bce5-1cd403a7b365
-plot(
-    [atan tanh logistic x -> clamp(x, -1, 1)];
-    layout=(2, 2),
-    legend=false,
-    title=[L"\arctan(z)" L"\tanh(z)" L"\mathrm{logistic}(z)" L"\mathrm{piecewise\ linear}"],
-    xlabel=L"z",
-    ylabel=L"p(c=1)",
-)
 
 # ╔═╡ 24b1008e-f038-4d3d-a7f0-43d4488387f4
 md"""
@@ -268,7 +212,7 @@ Instead of switching our main interest to botany, we generate a new synthetic da
 # ╔═╡ cc67a1d7-f195-4deb-9b39-22e06a75283d
 md"""
 !!! question
-	Could a logistic regression model fit this XOR-inspired data?
+	Could a logistic regression model fit this data?
 """
 
 # ╔═╡ a96569a4-4ab2-4681-ab4f-fae744a0a671
@@ -287,6 +231,79 @@ md"""
 This section contains data generation, utility functions and UI elements used in the above notebook.
 """
 
+# ╔═╡ 54ef467e-8cc2-436e-bddc-37c57b6e6980
+custom_style = html"""
+<style type="text/css">
+pluto-output div.admonition.model {
+	border-color: #bfaa83;
+    background: #976e3b;
+}
+
+pluto-output div.admonition.model .admonition-title {
+	background: #bfaa83;
+}
+</style>
+""";
+
+# ╔═╡ ef43aef6-80ec-4976-91e6-84a74d29a83e
+begin
+    using DataFrames,
+        Flux,
+        LinearAlgebra,
+        Latexify,
+        LaTeXStrings,
+        LogExpFunctions,
+        Optim,
+        Plots,
+        PlutoUI,
+        Random,
+        Symbolics,
+        Turing
+    using Turing: Flat
+    Plots.theme(:default; msw=0, ms=3, lw=2, framestyle=:grid, guidefontsize=14)
+	custom_style  # force style to appear at the top
+end
+
+# ╔═╡ d1cd6a46-dc5b-4188-a891-703b50bce186
+# stop marker at end? Maybe an empty box ☐, since it's a "provisory" endpoint
+let
+    p = plot(; size=(550, 500))
+    plot!(p, first.(line_trace_manual), last.(line_trace_manual); color=:blue)
+    scatter!(
+        p, Base.vect.(line_trace_manual[begin])...; color=:black, marker=:rtriangle, ms=6
+    )
+    plot!(
+        p;
+        xlims=(-2.1, 4.1),
+        ylims=(-3.1, 2.1),
+        aspect_ratio=1,
+        xlabel=L"w_0",
+        ylabel=L"w_1",
+        legend=false,
+    )
+	scatter!(p, Base.vect.(line_trace_manual[end])...; color=:black, marker=:square, ms=4, label="")
+end
+
+# ╔═╡ 2909ff18-e98b-4149-843f-1c4709cfbb37
+let
+    funs = [exp, x -> -exp(x), tanh]
+    plots = map(funs) do f
+        lex = latexify(f(Symbolics.Sym{Real}(:z)); env=:raw)
+        plot(f; xlabel=L"z", ylabel=L"%$lex", label="")
+    end
+    plot(plots...; link=:both)
+end
+
+# ╔═╡ dfebe8a3-fbe5-4381-bce5-1cd403a7b365
+plot(
+    [atan tanh logistic x -> clamp(x, -1, 1)];
+    layout=(2, 2),
+    legend=false,
+    title=[L"\arctan(z)" L"\tanh(z)" L"\mathrm{logistic}(z)" L"\mathrm{piecewise\ linear}"],
+    xlabel=L"z",
+    ylabel=L"p(c=1)",
+)
+
 # ╔═╡ f75ad936-8c06-4e00-92d7-1f86532c0072
 TableOfContents()
 
@@ -300,7 +317,7 @@ important(text) = HTML("""<span style="color:orange"><strong>$text</strong></spa
 md"""
 ## The data
 
-We are going to work with a collection of ``10`` observations or ``y``-values, for example, _the height of a plant_ in meters. For each of them we get as potentially useful information an ``x``-value, for example _the amount of water the plant received over a certain period_, in liters.
+We are going to work with a collection of ``m=10`` observations or ``y``-values, for example, _the height of a plant_ in meters. For each of them we get as potentially useful information an ``x``-value, for example _the amount of water the plant received over a certain period_, in liters.
 
 In this setting, each individual pair ``(x_i, y_i)`` is called an $(important("instance")) or $(important("example")).
 All ``10`` datapoints form our $(important("dataset")) ``\mathcal{D}:=\{(x_i,y_i),\ \ i=1\ldots 10\}``.
@@ -342,23 +359,26 @@ The first step to building any model is choosing its structure, i.e. choosing th
 md"""
 This process of fitting one coordinate at a time to minimize the loss is called $(important("coordinate descent")).
 Here I've saved a trajectory I took manually performing coordinate descent.
+I stopped early because I was tired of manually tweaking.
 """
 
 # ╔═╡ 6f75889b-1c7f-4261-bf27-7c991ee9e414
 md"""
+We can think of the plot above as a topographical map of some landscape, where we want to find the lowest point.
 Each step the computer takes is in a direction perpendicular to the level curve of the error function at that point.
 This is the direction of steepest descent, which is the negative of the derivative of the error function with respect to the weights (i.e. the gradient) at that point.
 
-For any set of weights (and almost any model), a modern machine learning package can automatically compute this direction using a method called $(important("backpropagation")) (AKA reverse-mode [automatic differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation)), where it approximates how much each parameter is responsible for the error and should therefore change to minimize the error.
+For any set of weights (and almost any model), a modern machine learning package can automatically compute this direction using a method called [$(important("backpropagation"))](https://en.wikipedia.org/wiki/Backpropagation) (AKA reverse-mode [automatic differentiation](https://en.wikipedia.org/wiki/Automatic_differentiation)), where it approximates how much each parameter is responsible for the error and should therefore change to minimize the error.
 
 This isn't enough though to train the model.
 We also need to know how much to change each weight (i.e., how far to step).
 It seems intuitive that early on we might need larger steps to cover more terrain faster but in the end want to take smaller steps to avoid stepping too far.
 
-And, what if the direction of steepest descent leads to a local minimum where we'll be trapped?
-To train a model in practice, you need to also choose an $(important("optimizer")), that uses the derivatives to modify the weights for you.
+This is a really simple landscape with a single large valley, but often in ML, the landscape can be very bumpy, with lots of tiny hills and valleys.
+Finding the global minimum in such cases is often not possible, and finding a low point at all requires a sophisticated algorithm for searching the parameters, using as one component the gradient.
+Modern ML frameworks contain many such training algorithms.
 
-From now on, we will ignore backpropagation and the optimizer and treat them as a black box fitting method.
+From now on, we will ignore backpropagation and algorithm used to fit the parameters and treat them together as a black box.
 """
 
 # ╔═╡ 39414e5e-1256-4497-9738-e2ecdff62d9d
@@ -394,7 +414,7 @@ In effect, we add a term to our loss function that penalizes large weight values
 Our regularized error function is
 
 ```math
-\tilde{E}(w) = E(w) + \frac{\lambda}{2}\sum_{i=1}^n w_i^2.
+\tilde{E}(w) = E(w) + \frac{\lambda}{2}\sum_{j=1}^n w_j^2.
 ```
 
 The strength of the penalization is controlled by the magnitude of ``\lambda``.
@@ -418,7 +438,7 @@ In a $(important("Bayesian")) model (AKA a "probabilistic model"), uncertainties
 
 Bayesian models combine a likelihood function (i.e. our error function) with a prior on the model parameters (i.e. our regularization term), which define together a joint distribution of parameters (i.e. our weights) given the data, called a $(important("posterior distribution")).
 
-For our linear regression model, with 2 degrees of freedom, we can visualize draws from this distribution versus the single best fit.
+For our linear regression model, with 2 degrees of freedom, we can visualize draws from this distribution (points) versus the single best fit (point with white border).
 """
 
 # ╔═╡ b0773555-44ac-4b06-a410-d25ee1f42399
@@ -439,7 +459,11 @@ Advantages:
 Disadvantages:
 - Difficult to scale to large data or many parameters, since drawing samples is expensive.
 
-**If data is scarce, uncertainty quantification is important, and/or you want interpretable models, you may want to try out $(important("probabilistic programming")).**
+The field of machine learning devoted to the construction of and computation with Bayesian models is called $(important("probabilistic programming")).
+The key tools here are probabilistic programming languages (PPLs).
+PPLs generally provide a convenient syntax for writing models, a library of robust samplers for drawing samples given the model, and usually plots and diagnostics for interpreting and improving on the models.
+
+If data is scarce, uncertainty quantification is important, and/or you want interpretable models, you may want to try out probabilistic programming.
 """
 
 # ╔═╡ df8f0019-84b9-4309-ab16-4a909fa94e88
@@ -450,12 +474,12 @@ We saw earlier the general strategy of adding computed features ``g`` to increas
 We can also use this approach to encode model constraints.
 For example, if we know the function ``f`` is periodic with period ``P`` with respect to ``x``, then we could encode this constraint in the model by choosing ``g`` to be sine and cosine functions of increasing frequency:
 
-!!! model
+!!! model "Model: Fourier series"
 	```math
 	\hat{f}(x_i; w) = w_0 + \sum_{j=1}^n w_j\cos\left(\frac{2\pi j}{P} x_i\right) + w_{j+1} \sin\left(\frac{2\pi j}{P} x_i\right)
 	```
 
-This is called a [Fourier series](https://en.wikipedia.org/wiki/Fourier_series) and is analogous to a polynomial for periodic functions.
+This is called a [Fourier series](https://en.wikipedia.org/wiki/Fourier_series) and is essentially a polynomial for periodic functions.
 We could even add aperiodic terms to the sum to explicitly model periodic and aperiodic effects.
 
 Encoding constraints in the model is called $(important("inductive bias")).
@@ -469,7 +493,7 @@ The approach we have taken so far works when the labels can occur anywhere on th
 
 We can encode these constraints by applying a function ``\phi`` to the output of the model
 
-!!! model
+!!! model "Model: linear combination of functions with link function"
 	```math
 	\hat{f}(x_i; w) = \phi\left(\sum_{j=1}^n w_j g_j(x_i)\right),
 	```
@@ -511,7 +535,7 @@ md"""
 When predicting probabilities, it's common to choose the logistic function, which we will refer to only as ``\sigma``.
 
 Our model is then
-!!! model
+!!! model "Model: logistic regression"
 	```math
 	\hat{f}(x_i; w) = \sigma\left( \sum_{j=1}^n w_j g_j(x_i)\right).
 	```
@@ -525,6 +549,8 @@ While we could use the same sum-of-squares loss on this function, it turns out t
 ````math
 E(w) = -\sum_{i=1}^k c_i \log \hat{f}(x_i; w) + (1 - c_i) \log (1 - \hat{f}(x_i; w))
 ````
+
+This model with this choice of loss is called [$(important("logistic regression"))](https://en.wikipedia.org/wiki/Logistic_regression). 
 
 Below we show the results of fitting an order ``n=33`` polynomial with logistic function output to the binary labels.
 """
@@ -541,7 +567,7 @@ To recap, we've seen 3 strategies for model expansion:
 We've so far used all of the weights in the middle, but why not apply some weights, then a function, then apply more weights?
 That is, why not have two matrices of weights ``W_1`` and ``W_2``:
 
-!!! model
+!!! model "Model: feed-forward neural network with 1 hidden layer"
 	```math
 	\hat{f}(x; W_1, W_2) = \sigma(\sigma(g(x) W_1) W_2).
 	```
@@ -557,7 +583,7 @@ md"""
 
 One example of a neural network for classification is
 
-!!! model
+!!! model "Model: feed-forward neural network with 1 hidden layer"
 	```math
 	\hat{f}(x; W_1, W_2) = \sigma(\sigma(x W_1) W_2).
 	```
@@ -621,7 +647,7 @@ md"""
 
 The simplest model we could choose for ``f`` is a horizontal line:
 
-!!! model
+!!! model "Model: horizontal line"
 	````math
 	\hat{f}(x_i; w) = w_0
 	````
@@ -647,7 +673,7 @@ That is, we need a notion of error; the best fit has the smallest error.
 This is called an $(important("error function")) or $(important("loss function")).
 Here, we choose a "sum-of-squares" error function:
 ````math
-E(w) = \frac{1}{2}\sum_{i=1}^n (\hat{f}(x_i; w) - y_i)^2
+E(w) = \frac{1}{2}\sum_{i=1}^m (\hat{f}(x_i; w) - y_i)^2
 ````
 
 ``E(w) = 0`` when ``\hat{f}`` is perfectly able to predict each ``y_i`` from its feature ``x_i``.
@@ -663,9 +689,9 @@ md"""
 
 For a better fit, let's give the line not only an intercept ``w_0`` but also also a slope ``w_1``:
 
-!!! model
+!!! model "Model: line"
 	````math
-	\text{model}:\quad \hat{f}(x_i; w) = w_0 + w_1 x_i
+	\hat{f}(x_i; w) = w_0 + w_1 x_i
 	````
 
 This model now has two degrees of freedom, which we can arrange in a $(important("weight")) vector ``w = \begin{pmatrix}w_0 \\ w_1\end{pmatrix}``.
@@ -673,7 +699,7 @@ This model now has two degrees of freedom, which we can arrange in a $(important
 Weights are one common type of $(important("internal parameter")) of ML models.
 In this notebook, all internal parameters can be interpreted as weights.
 
-This model is an example of $(important("linear regression")).
+This model is an example of [$(important("linear regression"))](https://en.wikipedia.org/wiki/Linear_regression).
 
 ``w_0`` is often called an $(important("intercept")) or $(important("bias")) term; it shifts the output of the function vertically.
 
@@ -715,7 +741,7 @@ To do this, we need to allow ``\hat{f}`` to take more complex shapes.
 
 One way we can do this is by defining ``\hat{f}`` as the weighted sum of simpler functions ``g_j``:
 
-!!! model
+!!! model "Model: linear combination of functions"
 	```math
 	\hat{f}(x; w) = w_1 g_1(x) + w_2 g_2(x) + \ldots + w_n g_n(x) = \sum_{j=1}^n w_j g_j(x).
 	```
@@ -749,15 +775,16 @@ md"""
 
 One way we can systematically scale the model complexity is by choosing as many computed features as we want from some indexed family of functions ``g_j``.
 
-For example, we can let ``g_j(x) = x^j``, so that
+For example, we can let ``g_j(x_i) = x_i^j``, so that
 
-!!! model
+!!! model "Model: polynomial"
 	```math
-	\hat{f}(x_i; w) = w_0 + w_1 x_1 + w_2 x^2 + \ldots + w_n x^n = \sum_{j=0}^n w_j x_i^j
+	\hat{f}(x_i; w) = w_0 + w_1 x_i + w_2 x_i^2 + \ldots + w_n x_i^n = \sum_{j=0}^n w_j x_i^j
 	```
 
-Functions of the form of ``\hat{f}`` are called $(important("polynomials")), and many functions (specifically, [analytic](https://en.wikipedia.org/wiki/Analytic_function) functions) can be exactly computed with infinite terms (i.e. ``n \to \infty``) or approximated with finite terms (by picking some manageable ``n``).
-Fitting these polynomial models is called $(important("polynomial regression")).
+Functions of the form of ``\hat{f}`` are called [polynomials](https://en.wikipedia.org/wiki/Polynomial), and many functions (specifically, [analytic](https://en.wikipedia.org/wiki/Analytic_function) functions) can be exactly computed with infinite terms (i.e. ``n \to \infty``) or approximated with finite terms (by picking some manageable ``n``).
+Fitting these polynomial models is called [$(important("polynomial regression"))](https://en.wikipedia.org/wiki/Polynomial_regression).
+
 
 Our line with two degrees of freedom is the special case ``n=1``, though note again that here ``\hat{f}`` is still linear with respect to the weights ``w`` (i.e. this is still _linear_ regression)
 
@@ -794,7 +821,7 @@ Number of hidden units = $nhidden1_input
 # ╔═╡ 29fb4486-5605-438f-9b1a-a24a19b20c5e
 md"""
 Sure, we could fit this data with logistic regression if we chose the right computed features.
-Importantly, it is not possible to fit this data if we only use linear features.
+Importantly, it is *not* possible to fit this data if we only linearly combine raw features (i.e. no line can be drawn to separate the two classes).
 But we can also fit this data with a neural net, which would compute the features for us, reusing the same architecture we defined above and only adding a second input feature.
 
 $(PlutoUI.Resource("https://svgshare.com/i/fky.svg", :width=>450))
@@ -849,7 +876,7 @@ function plot_data!(
     end
     if f_hat !== nothing
         # hack to give the fit a white border
-        plot!(p, f_hat, xrange...; color=:white, lw=2.5, label="")
+        plot!(p, f_hat, xrange...; color=:white, lw=3.5, label="")
         plot!(p, f_hat, xrange...; color=:orange, label="")
     end
     if equation !== nothing
@@ -1176,6 +1203,7 @@ let
     )
     w = fit!(PolyModel(1), x, y).w
     scatter!(p, [w[1]], [w[2]]; color=:black, marker=:square, ms=4, label="")
+	scatter!(p, Base.vect.(line_trace_manual[end])...; color=:black, marker=:square, ms=4, label="")
     plot!(
         p;
         xlims=(-2.1, 4.1),
@@ -1319,7 +1347,7 @@ let
         lw=1,
     )
     f_hat = fit!(PolyModel(1), x, y)
-    scatter!(p, [f_hat.w[1]], [f_hat.w[2]]; color=:orange, msc=:white, msw=2, ms=4)
+    scatter!(p, [f_hat.w[1]], [f_hat.w[2]]; color=:orange, msc=:white, msw=1.3, ms=3)
     plot!(
         p;
         xlims=(-4.1, 4.1),
@@ -3142,18 +3170,18 @@ version = "0.9.1+5"
 # ╟─18198312-54c3-4b4f-b865-3a6a775ce483
 # ╠═a1ca71d8-2b2c-48de-8088-3cc32135fe5a
 # ╟─435c9f3b-640a-4f54-a836-05fde7ef51a2
-# ╟─31b1a0e4-216f-4c90-b16e-f542000c8aee
+# ╠═31b1a0e4-216f-4c90-b16e-f542000c8aee
 # ╠═1b4812d4-3879-4a79-a95d-20cad2959f5c
 # ╟─48f03e74-1e25-41b8-a21c-fd810fadc2cf
-# ╟─cd49e0a5-4120-481a-965e-72e7bdaf867c
+# ╠═cd49e0a5-4120-481a-965e-72e7bdaf867c
 # ╠═72198269-d070-493f-92eb-36135692ca8f
 # ╟─4c7e53c5-1271-4acf-95cc-5345564d1b15
 # ╠═288aa7d7-8785-4f55-95e6-409e2ceb203a
 # ╟─21a16ac9-f83e-46e8-81a2-09f79aa17eae
-# ╟─ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
+# ╠═ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 # ╠═345ae96b-92c2-4ac4-bfdf-302113627ffb
 # ╠═1a906880-75e1-447b-9adf-31ae44f0135f
-# ╠═b657b5fe-af35-46e9-93c7-f897e7b22ddc
+# ╟─b657b5fe-af35-46e9-93c7-f897e7b22ddc
 # ╠═0d1164df-8236-494b-b8b9-71481c94c0d9
 # ╟─def60ead-a40b-4376-82cd-a77455f6b942
 # ╠═67486053-5971-406b-8680-0d80803d797a
@@ -3162,17 +3190,17 @@ version = "0.9.1+5"
 # ╟─942f314e-927b-4371-8c83-83801c860b4d
 # ╟─2eb005a3-f5b2-4216-b56f-e25157b8c33c
 # ╠═6016a736-11da-4451-aa82-cc3045e782db
-# ╠═6f75889b-1c7f-4261-bf27-7c991ee9e414
-# ╟─74290eff-781b-44c9-8a90-96bffbe040df
+# ╟─6f75889b-1c7f-4261-bf27-7c991ee9e414
+# ╠═74290eff-781b-44c9-8a90-96bffbe040df
 # ╠═34bad558-e70f-4d46-a9ab-7acc6c89db7a
 # ╟─9049eeca-0db8-41d2-93ee-e0b4e445c9fd
 # ╠═bf50534d-1c9a-439a-9922-262f64b83c1d
 # ╟─06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
-# ╟─ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
+# ╠═ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
 # ╠═fc64996f-54ba-4c7a-8cfb-21133cec1fbe
 # ╟─1f1e9c9b-e5fa-41b1-852f-cadad703ee4b
 # ╠═e3dbe2f5-7e97-45b7-9b75-1acaf8f1031b
-# ╟─39414e5e-1256-4497-9738-e2ecdff62d9d
+# ╠═39414e5e-1256-4497-9738-e2ecdff62d9d
 # ╟─06dee467-1f54-48e1-908d-8e4c9028a748
 # ╠═aa7b8b58-f959-47de-84d7-8c9cf3ad96be
 # ╟─267532b6-ba74-4e74-992a-6cabb03949a0
@@ -3191,19 +3219,19 @@ version = "0.9.1+5"
 # ╟─a1671960-9b0b-47f2-8d3a-74d67a122ce0
 # ╠═8ea2e159-ef17-4ddd-b5a7-5f6c8d67238a
 # ╠═b0773555-44ac-4b06-a410-d25ee1f42399
-# ╟─df8f0019-84b9-4309-ab16-4a909fa94e88
+# ╠═df8f0019-84b9-4309-ab16-4a909fa94e88
 # ╠═2909ff18-e98b-4149-843f-1c4709cfbb37
 # ╟─ed7cb5c1-528a-4356-80dd-b337107eaf1f
 # ╟─1e12834c-4b29-41db-ab1f-d93db62c8341
 # ╠═09877b51-c34c-4351-ab8d-0fbee76d5a1b
 # ╟─ba59678b-1606-4132-9f19-0dae1e660195
 # ╠═dfebe8a3-fbe5-4381-bce5-1cd403a7b365
-# ╟─b53798f9-24c2-4def-ab6f-447a5d809865
+# ╠═b53798f9-24c2-4def-ab6f-447a5d809865
 # ╠═90a42425-9f1b-464a-9b10-d0a25cc6717c
 # ╟─24b1008e-f038-4d3d-a7f0-43d4488387f4
 # ╟─3316bd55-0f83-48d1-8512-f9192953d716
-# ╟─5505fc32-1e46-4256-831c-d1b94d1e946c
-# ╟─94a9846b-ff01-487d-aeac-ddd4ab81610c
+# ╠═5505fc32-1e46-4256-831c-d1b94d1e946c
+# ╠═94a9846b-ff01-487d-aeac-ddd4ab81610c
 # ╟─d2e5bde1-8c65-494f-8944-b16dec6ab193
 # ╠═655c8b62-e180-41e6-a3b5-7317cdc76f73
 # ╟─6f2399db-24e7-4586-a93e-bdb38279470f
@@ -3211,10 +3239,11 @@ version = "0.9.1+5"
 # ╠═82a245fa-6e02-41f4-bba4-769863a896db
 # ╟─cc67a1d7-f195-4deb-9b39-22e06a75283d
 # ╠═dda5a074-3f7b-46dd-bc4b-cb05117ec425
-# ╠═29fb4486-5605-438f-9b1a-a24a19b20c5e
+# ╟─29fb4486-5605-438f-9b1a-a24a19b20c5e
 # ╠═f52b2954-6edb-48cc-8dc9-94a4ef613012
 # ╟─a96569a4-4ab2-4681-ab4f-fae744a0a671
 # ╟─5b237453-472f-414e-95e0-f44e980ea93a
+# ╠═54ef467e-8cc2-436e-bddc-37c57b6e6980
 # ╠═ef43aef6-80ec-4976-91e6-84a74d29a83e
 # ╠═f75ad936-8c06-4e00-92d7-1f86532c0072
 # ╠═2cf7fd33-2fda-4311-b699-c8441181b292
