@@ -7,18 +7,29 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try
-            Base.loaded_modules[Base.PkgId(
-                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
-                "AbstractPlutoDingetjes",
-            )].Bonds.initial_value
-        catch
-            b -> missing
-        end
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
     end
+end
+
+# ╔═╡ ef43aef6-80ec-4976-91e6-84a74d29a83e
+begin
+    using DataFrames,
+        Flux,
+        LinearAlgebra,
+        Latexify,
+        LaTeXStrings,
+        LogExpFunctions,
+        Optim,
+        Plots,
+        PlutoUI,
+        Random,
+        Symbolics,
+        Turing
+    using Turing: Flat
+    Plots.theme(:default; msw=0, ms=3, lw=2, framestyle=:grid, guidefontsize=14)
 end
 
 # ╔═╡ 2c05ac8e-7e0b-4d28-ad45-24e9c21aa882
@@ -71,6 +82,32 @@ line_trace_manual = [
     [1.101, 0.5],
     [0.96, 0.5],
 ]
+
+# ╔═╡ d1cd6a46-dc5b-4188-a891-703b50bce186
+let
+    p = plot(; size=(550, 500))
+    plot!(p, first.(line_trace_manual), last.(line_trace_manual); color=:blue)
+    scatter!(
+        p, Base.vect.(line_trace_manual[begin])...; color=:black, marker=:rtriangle, ms=6
+    )
+    plot!(
+        p;
+        xlims=(-2.1, 4.1),
+        ylims=(-3.1, 2.1),
+        aspect_ratio=1,
+        xlabel=L"w_0",
+        ylabel=L"w_1",
+        legend=false,
+    )
+    scatter!(
+        p,
+        Base.vect.(line_trace_manual[end])...;
+        color=:black,
+        marker=:square,
+        ms=4,
+        label="",
+    )
+end
 
 # ╔═╡ 7f9e91b8-ee23-4d73-bfe5-c58a29b77abe
 md"""
@@ -163,6 +200,26 @@ We can think of each curve as a hypothesis, and the variability in the ensemble 
 Again, we plot the single best fitting curve with a white border.
 """
 
+# ╔═╡ 2909ff18-e98b-4149-843f-1c4709cfbb37
+let
+    funs = [exp, x -> -exp(x), tanh]
+    plots = map(funs) do f
+        lex = latexify(f(Symbolics.Sym{Real}(:z)); env=:raw)
+        plot(f; xlabel=L"z", ylabel=L"%$lex", label="")
+    end
+    plot(plots...; link=:both)
+end
+
+# ╔═╡ dfebe8a3-fbe5-4381-bce5-1cd403a7b365
+plot(
+    [atan tanh logistic x -> clamp(x, -1, 1)];
+    layout=(2, 2),
+    legend=false,
+    title=[L"\arctan(z)" L"\tanh(z)" L"\mathrm{logistic}(z)" L"\mathrm{piecewise\ linear}"],
+    xlabel=L"z",
+    ylabel=L"p(c=1)",
+)
+
 # ╔═╡ 24b1008e-f038-4d3d-a7f0-43d4488387f4
 md"""
 See how where there is a clear separation of points from the two classes, the predicted probability sharply transitions from 0 to 1, but where there's more overlap, it more gradually transitions, so that there's a wider region where the probabilities are not close to 0 or 1.
@@ -238,8 +295,14 @@ md"""
 This section contains data generation, utility functions and UI elements used in the above notebook.
 """
 
+# ╔═╡ f75ad936-8c06-4e00-92d7-1f86532c0072
+TableOfContents()
+
+# ╔═╡ 2cf7fd33-2fda-4311-b699-c8441181b292
+@register_symbolic Flux.σ(x)
+
 # ╔═╡ 54ef467e-8cc2-436e-bddc-37c57b6e6980
-custom_style = html"""
+html"""
 <style type="text/css">
 pluto-output div.admonition.model {
 	border-color: #bfaa83;
@@ -251,78 +314,6 @@ pluto-output div.admonition.model .admonition-title {
 }
 </style>
 """;
-
-# ╔═╡ ef43aef6-80ec-4976-91e6-84a74d29a83e
-begin
-    using DataFrames,
-        Flux,
-        LinearAlgebra,
-        Latexify,
-        LaTeXStrings,
-        LogExpFunctions,
-        Optim,
-        Plots,
-        PlutoUI,
-        Random,
-        Symbolics,
-        Turing
-    using Turing: Flat
-    Plots.theme(:default; msw=0, ms=3, lw=2, framestyle=:grid, guidefontsize=14)
-    custom_style  # force style to appear at the top
-end
-
-# ╔═╡ d1cd6a46-dc5b-4188-a891-703b50bce186
-# stop marker at end? Maybe an empty box ☐, since it's a "provisory" endpoint
-let
-    p = plot(; size=(550, 500))
-    plot!(p, first.(line_trace_manual), last.(line_trace_manual); color=:blue)
-    scatter!(
-        p, Base.vect.(line_trace_manual[begin])...; color=:black, marker=:rtriangle, ms=6
-    )
-    plot!(
-        p;
-        xlims=(-2.1, 4.1),
-        ylims=(-3.1, 2.1),
-        aspect_ratio=1,
-        xlabel=L"w_0",
-        ylabel=L"w_1",
-        legend=false,
-    )
-    scatter!(
-        p,
-        Base.vect.(line_trace_manual[end])...;
-        color=:black,
-        marker=:square,
-        ms=4,
-        label="",
-    )
-end
-
-# ╔═╡ 2909ff18-e98b-4149-843f-1c4709cfbb37
-let
-    funs = [exp, x -> -exp(x), tanh]
-    plots = map(funs) do f
-        lex = latexify(f(Symbolics.Sym{Real}(:z)); env=:raw)
-        plot(f; xlabel=L"z", ylabel=L"%$lex", label="")
-    end
-    plot(plots...; link=:both)
-end
-
-# ╔═╡ dfebe8a3-fbe5-4381-bce5-1cd403a7b365
-plot(
-    [atan tanh logistic x -> clamp(x, -1, 1)];
-    layout=(2, 2),
-    legend=false,
-    title=[L"\arctan(z)" L"\tanh(z)" L"\mathrm{logistic}(z)" L"\mathrm{piecewise\ linear}"],
-    xlabel=L"z",
-    ylabel=L"p(c=1)",
-)
-
-# ╔═╡ f75ad936-8c06-4e00-92d7-1f86532c0072
-TableOfContents()
-
-# ╔═╡ 2cf7fd33-2fda-4311-b699-c8441181b292
-@register_symbolic Flux.σ(x)
 
 # ╔═╡ b176823e-b8b5-413d-87b1-90d7efa0e377
 important(text) = HTML("""<span style="color:orange"><strong>$text</strong></span>""")
@@ -3195,15 +3186,15 @@ version = "0.9.1+5"
 # ╟─18198312-54c3-4b4f-b865-3a6a775ce483
 # ╠═a1ca71d8-2b2c-48de-8088-3cc32135fe5a
 # ╟─435c9f3b-640a-4f54-a836-05fde7ef51a2
-# ╠═31b1a0e4-216f-4c90-b16e-f542000c8aee
+# ╟─31b1a0e4-216f-4c90-b16e-f542000c8aee
 # ╠═1b4812d4-3879-4a79-a95d-20cad2959f5c
 # ╟─48f03e74-1e25-41b8-a21c-fd810fadc2cf
-# ╠═cd49e0a5-4120-481a-965e-72e7bdaf867c
+# ╟─cd49e0a5-4120-481a-965e-72e7bdaf867c
 # ╠═72198269-d070-493f-92eb-36135692ca8f
 # ╟─4c7e53c5-1271-4acf-95cc-5345564d1b15
 # ╠═288aa7d7-8785-4f55-95e6-409e2ceb203a
 # ╟─21a16ac9-f83e-46e8-81a2-09f79aa17eae
-# ╠═ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
+# ╟─ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 # ╠═345ae96b-92c2-4ac4-bfdf-302113627ffb
 # ╠═1a906880-75e1-447b-9adf-31ae44f0135f
 # ╟─b657b5fe-af35-46e9-93c7-f897e7b22ddc
@@ -3216,16 +3207,16 @@ version = "0.9.1+5"
 # ╟─2eb005a3-f5b2-4216-b56f-e25157b8c33c
 # ╠═6016a736-11da-4451-aa82-cc3045e782db
 # ╟─6f75889b-1c7f-4261-bf27-7c991ee9e414
-# ╠═74290eff-781b-44c9-8a90-96bffbe040df
+# ╟─74290eff-781b-44c9-8a90-96bffbe040df
 # ╠═34bad558-e70f-4d46-a9ab-7acc6c89db7a
 # ╟─9049eeca-0db8-41d2-93ee-e0b4e445c9fd
 # ╠═bf50534d-1c9a-439a-9922-262f64b83c1d
 # ╟─06e8320c-ddd9-4d13-bca3-10fb5c3fb7ad
-# ╠═ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
+# ╟─ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
 # ╠═fc64996f-54ba-4c7a-8cfb-21133cec1fbe
 # ╟─1f1e9c9b-e5fa-41b1-852f-cadad703ee4b
 # ╠═e3dbe2f5-7e97-45b7-9b75-1acaf8f1031b
-# ╠═39414e5e-1256-4497-9738-e2ecdff62d9d
+# ╟─39414e5e-1256-4497-9738-e2ecdff62d9d
 # ╟─06dee467-1f54-48e1-908d-8e4c9028a748
 # ╠═aa7b8b58-f959-47de-84d7-8c9cf3ad96be
 # ╟─267532b6-ba74-4e74-992a-6cabb03949a0
@@ -3243,20 +3234,20 @@ version = "0.9.1+5"
 # ╠═d462dc39-f90b-4429-b6b5-7ded05fa3432
 # ╟─a1671960-9b0b-47f2-8d3a-74d67a122ce0
 # ╠═8ea2e159-ef17-4ddd-b5a7-5f6c8d67238a
-# ╠═b0773555-44ac-4b06-a410-d25ee1f42399
-# ╠═df8f0019-84b9-4309-ab16-4a909fa94e88
+# ╟─b0773555-44ac-4b06-a410-d25ee1f42399
+# ╟─df8f0019-84b9-4309-ab16-4a909fa94e88
 # ╠═2909ff18-e98b-4149-843f-1c4709cfbb37
 # ╟─ed7cb5c1-528a-4356-80dd-b337107eaf1f
 # ╟─1e12834c-4b29-41db-ab1f-d93db62c8341
 # ╠═09877b51-c34c-4351-ab8d-0fbee76d5a1b
 # ╟─ba59678b-1606-4132-9f19-0dae1e660195
 # ╠═dfebe8a3-fbe5-4381-bce5-1cd403a7b365
-# ╠═b53798f9-24c2-4def-ab6f-447a5d809865
+# ╟─b53798f9-24c2-4def-ab6f-447a5d809865
 # ╠═90a42425-9f1b-464a-9b10-d0a25cc6717c
 # ╟─24b1008e-f038-4d3d-a7f0-43d4488387f4
 # ╟─3316bd55-0f83-48d1-8512-f9192953d716
-# ╠═5505fc32-1e46-4256-831c-d1b94d1e946c
-# ╠═94a9846b-ff01-487d-aeac-ddd4ab81610c
+# ╟─5505fc32-1e46-4256-831c-d1b94d1e946c
+# ╟─94a9846b-ff01-487d-aeac-ddd4ab81610c
 # ╟─d2e5bde1-8c65-494f-8944-b16dec6ab193
 # ╠═655c8b62-e180-41e6-a3b5-7317cdc76f73
 # ╟─6f2399db-24e7-4586-a93e-bdb38279470f
@@ -3268,10 +3259,10 @@ version = "0.9.1+5"
 # ╠═f52b2954-6edb-48cc-8dc9-94a4ef613012
 # ╟─a96569a4-4ab2-4681-ab4f-fae744a0a671
 # ╟─5b237453-472f-414e-95e0-f44e980ea93a
-# ╠═54ef467e-8cc2-436e-bddc-37c57b6e6980
 # ╠═ef43aef6-80ec-4976-91e6-84a74d29a83e
 # ╠═f75ad936-8c06-4e00-92d7-1f86532c0072
 # ╠═2cf7fd33-2fda-4311-b699-c8441181b292
+# ╠═54ef467e-8cc2-436e-bddc-37c57b6e6980
 # ╠═b176823e-b8b5-413d-87b1-90d7efa0e377
 # ╟─c75744a0-3c3f-4042-a796-6cbd9ec11195
 # ╠═2cc52188-b262-4f65-b042-ad94d90523d8
