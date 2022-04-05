@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -304,19 +311,33 @@ TableOfContents()
 # ╔═╡ 54ef467e-8cc2-436e-bddc-37c57b6e6980
 html"""
 <style type="text/css">
-pluto-output div.admonition.model {
-	border-color: #bfaa83;
-    background: #976e3b;
+@media (prefers-color-scheme: light) {
+	pluto-output div.admonition.model {
+		border-color: #dba058;
+	    background: #f7d698;
+	}
+	
+	pluto-output div.admonition.model .admonition-title {
+		background: #dba058;
+	}
 }
 
-pluto-output div.admonition.model .admonition-title {
-	background: #bfaa83;
+@media (prefers-color-scheme: dark) {
+	pluto-output div.admonition.model {
+		border-color: #d7ae61;
+	    background: #7d541f;
+	}
+	
+	pluto-output div.admonition.model .admonition-title {
+		background: #d7ae61;
+	}
 }
+
 </style>
-""";
+"""
 
 # ╔═╡ b176823e-b8b5-413d-87b1-90d7efa0e377
-important(text) = HTML("""<span style="color:orange"><strong>$text</strong></span>""")
+important(text) = HTML("""<span style="color:#d28800"><strong>$text</strong></span>""")
 
 # ╔═╡ 18198312-54c3-4b4f-b865-3a6a775ce483
 md"""
