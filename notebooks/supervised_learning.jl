@@ -200,6 +200,35 @@ We can think of each curve as a hypothesis, and the variability in the ensemble 
 Again, we plot the single best fitting curve with a white border.
 """
 
+# ╔═╡ df8f0019-84b9-4309-ab16-4a909fa94e88
+md"""
+## Families of models
+
+We saw earlier the general strategy of adding computed features ``g`` to increase model complexity.
+We can also use this approach to encode model constraints.
+For example, if we know the function ``f`` is periodic with period ``P`` with respect to ``x``, then we could encode this constraint in the model by choosing ``g`` to be sine and cosine functions of increasing frequency:
+
+!!! model "Model: Fourier series"
+	```math
+	\hat{f}(x_i; w) = w_0 + \sum_{j=1}^n w_j\cos\left(\frac{2\pi j}{P} x_i\right) + w_{j+1} \sin\left(\frac{2\pi j}{P} x_i\right)
+	```
+
+This is called a [Fourier series](https://en.wikipedia.org/wiki/Fourier_series) and is essentially a polynomial for periodic functions.
+We could even add aperiodic terms to the sum to explicitly model periodic and aperiodic effects.
+
+Let's look at this vocabulary of functions:
+"""
+
+# ╔═╡ d4c08329-baa4-438a-9555-ee0ea5443e44
+let
+	funs = vcat(one, reduce(vcat, [[x -> cospi(2j * x), x -> sinpi(2j * x)] for j in 1:4]))
+    plots = map(funs) do gj
+        lex = latexify(gj(Symbolics.Sym{Real}(:x)); env=:raw)
+        plot(gj, 0, 1; color=:orange, xlabel=L"x", ylabel=L"%$lex", label="")
+    end
+    plot(plots...; link=:both)
+end
+
 # ╔═╡ 2909ff18-e98b-4149-843f-1c4709cfbb37
 let
     funs = [exp, x -> -exp(x), tanh]
@@ -485,22 +514,8 @@ PPLs generally provide a convenient syntax for writing models, a library of robu
 If data is scarce, uncertainty quantification is important, and/or you want interpretable models, you may want to try out probabilistic programming.
 """
 
-# ╔═╡ df8f0019-84b9-4309-ab16-4a909fa94e88
+# ╔═╡ 954f9925-3346-49b6-8446-264e617efabc
 md"""
-## Families of models
-
-We saw earlier the general strategy of adding computed features ``g`` to increase model complexity.
-We can also use this approach to encode model constraints.
-For example, if we know the function ``f`` is periodic with period ``P`` with respect to ``x``, then we could encode this constraint in the model by choosing ``g`` to be sine and cosine functions of increasing frequency:
-
-!!! model "Model: Fourier series"
-	```math
-	\hat{f}(x_i; w) = w_0 + \sum_{j=1}^n w_j\cos\left(\frac{2\pi j}{P} x_i\right) + w_{j+1} \sin\left(\frac{2\pi j}{P} x_i\right)
-	```
-
-This is called a [Fourier series](https://en.wikipedia.org/wiki/Fourier_series) and is essentially a polynomial for periodic functions.
-We could even add aperiodic terms to the sum to explicitly model periodic and aperiodic effects.
-
 Encoding constraints in the model is called $(important("inductive bias")).
 Without inductive bias, it might take enormous amounts of data and a very complex model to learn the constraints that we already know; by encoding the constraint, we are able to learn more with the data we already have.
 
@@ -3271,6 +3286,8 @@ version = "0.9.1+5"
 # ╠═8ea2e159-ef17-4ddd-b5a7-5f6c8d67238a
 # ╟─b0773555-44ac-4b06-a410-d25ee1f42399
 # ╟─df8f0019-84b9-4309-ab16-4a909fa94e88
+# ╠═d4c08329-baa4-438a-9555-ee0ea5443e44
+# ╟─954f9925-3346-49b6-8446-264e617efabc
 # ╠═2909ff18-e98b-4149-843f-1c4709cfbb37
 # ╟─ed7cb5c1-528a-4356-80dd-b337107eaf1f
 # ╟─1e12834c-4b29-41db-ab1f-d93db62c8341
