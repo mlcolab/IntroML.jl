@@ -650,8 +650,8 @@ This section contains UI elements and variables they are bound to.
 
 # ╔═╡ 2cc52188-b262-4f65-b042-ad94d90523d8
 begin
-    w0_input = @bind w0 Scrubbable(-5:0.01:5; default=0.3, format="0.2f")
-    w1_input = @bind w1 Scrubbable(-5:0.01:5; default=-3, format="0.2f")
+    w0_input = @bind w0 Scrubbable(-3:0.1:3; default=0.3, format="0.2f")
+    w1_input = @bind w1 Scrubbable(-3:0.1:3; default=-3, format="0.2f")
     g_input = @bind g MultiSelect(
         [
             one => "1",
@@ -665,10 +665,10 @@ begin
         size=5,
         default=Function[one],
     )
-    max_order_input = @bind max_order Scrubbable(0:100; default=0)
+    max_order_input = @bind max_order Scrubbable(0:20; default=0)
     show_contour_input = @bind show_contour CheckBox(; default=false)
     λ_input = @bind λ Scrubbable(exp10.([-Inf; -15:1:0]); default=0, format=".1g")
-    thresh_input = @bind thresh Scrubbable(-4:0.01:4; default=0)
+    thresh_input = @bind thresh Scrubbable(-4:0.1:4; default=0)
     nhidden1_input = @bind nhidden1 Scrubbable(0:10; default=0)
     nhidden2_input = @bind nhidden2 Scrubbable(0:10; default=0)
 end;
