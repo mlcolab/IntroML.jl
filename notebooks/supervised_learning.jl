@@ -7,7 +7,14 @@ using InteractiveUtils
 # This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
 macro bind(def, element)
     quote
-        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local iv = try
+            Base.loaded_modules[Base.PkgId(
+                Base.UUID("6e696c72-6542-2067-7265-42206c756150"),
+                "AbstractPlutoDingetjes",
+            )].Bonds.initial_value
+        catch
+            b -> missing
+        end
         local el = $(esc(element))
         global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
         el
@@ -737,13 +744,13 @@ So we can equivalently plot the combination of weights on a 2D grid with a reado
 
 # ╔═╡ 0103f249-52e2-4403-b62e-b3ad21536d37
 g_options = [
-	one => "1",
-	identity => "x",
-	(x -> x^2) => "x²",
-	sin => "sin(x)",
-	cos => "cos(x)",
-	tan => "tan(x)",
-	exp => "exp(x)",
+    one => "1",
+    identity => "x",
+    (x -> x^2) => "x²",
+    sin => "sin(x)",
+    cos => "cos(x)",
+    tan => "tan(x)",
+    exp => "exp(x)",
 ];
 
 # ╔═╡ bf50534d-1c9a-439a-9922-262f64b83c1d
@@ -1215,11 +1222,7 @@ end
 # ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
 let
     scatter([w0_2], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
-    plot!(;
-        title=L"E(w)= %$(round(error_line; digits=2))",
-        xlabel=L"w_0",
-        ylabel=L"w_1",
-    )
+    plot!(; title=L"E(w)= %$(round(error_line; digits=2))", xlabel=L"w_0", ylabel=L"w_1")
 end
 
 # ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db
