@@ -649,7 +649,7 @@ This section contains UI elements and variables they are bound to.
 """
 
 # ╔═╡ 879e4355-d4f0-492c-9ac2-7359c794a9fd
-w0_input = @bind w0 Scrubbable(-3:0.1:3; default=0.3, format="0.2f");
+w0_input = @bind w0 Scrubbable(-2:0.25:2; default=0.25, format="0.2f");
 
 # ╔═╡ cd49e0a5-4120-481a-965e-72e7bdaf867c
 md"""
@@ -696,7 +696,10 @@ Now drag the value of ``w_0`` until you've minimized the error shown at the top 
 """
 
 # ╔═╡ b8ff692c-2ccb-455c-87c2-590177def1b4
-w1_input = @bind w1 Scrubbable(-3:0.1:3; default=-3, format="0.2f");
+w0_input2 = @bind w0_2 Scrubbable(-2:0.25:2; default=0.25, format="0.2f");
+
+# ╔═╡ fa6a31d1-f1b2-489b-9fef-4f92b5542c80
+w1_input = @bind w1 Scrubbable(-1:0.25:3; default=-1, format="0.2f");
 
 # ╔═╡ ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 md"""
@@ -721,7 +724,7 @@ This model is an example of [$(important("linear regression"))](https://en.wikip
 Drag the below values to minimize the loss.
 How low can you get the error?
 
-``w^\top = (`` $w0_input ``, `` $w1_input ``)``
+``w^\top = (`` $w0_input2 ``, `` $w1_input ``)``
 """
 
 # ╔═╡ b657b5fe-af35-46e9-93c7-f897e7b22ddc
@@ -732,20 +735,28 @@ So we can equivalently plot the combination of weights on a 2D grid with a reado
 ``w^\top = (`` $w0_input ``, `` $w1_input ``)``
 """
 
+# ╔═╡ 0103f249-52e2-4403-b62e-b3ad21536d37
+g_options = [
+	one => "1",
+	identity => "x",
+	(x -> x^2) => "x²",
+	sin => "sin(x)",
+	cos => "cos(x)",
+	tan => "tan(x)",
+	exp => "exp(x)",
+];
+
+# ╔═╡ bf50534d-1c9a-439a-9922-262f64b83c1d
+let
+    plots = map(g_options) do (gj, _)
+        lex = latexify(gj(Symbolics.Sym{Real}(:x)); env=:raw)
+        plot(gj, 0, 1; color=:orange, xlabel=L"x", ylabel=L"%$lex", label="")
+    end
+    plot(plots...; link=:both)
+end
+
 # ╔═╡ e06d0925-585f-42e9-9dea-49044625d3d8
-g_input = @bind g MultiSelect(
-    [
-        one => "1",
-        identity => "x",
-        (x -> x^2) => "x²",
-        sin => "sin(x)",
-        cos => "cos(x)",
-        tan => "tan(x)",
-        exp => "exp(x)",
-    ];
-    size=5,
-    default=Function[one],
-);
+g_input = @bind g MultiSelect(g_options, size=5, default=Function[one]);
 
 # ╔═╡ 74290eff-781b-44c9-8a90-96bffbe040df
 md"""
@@ -778,15 +789,6 @@ Hint: ``\begin{bmatrix}1 \\ x\end{bmatrix}`` is equivalent to fitting the line w
 
 ``g(x) = `` $g_input
 """
-
-# ╔═╡ bf50534d-1c9a-439a-9922-262f64b83c1d
-let
-    plots = map(g) do gj
-        lex = latexify(gj(Symbolics.Sym{Real}(:x)); env=:raw)
-        plot(gj, 0, 1; color=:orange, xlabel=L"x", ylabel=L"%$lex", label="")
-    end
-    plot(plots...; link=:both)
-end
 
 # ╔═╡ aa8c6266-0338-44a9-b14b-088f98b04db3
 max_order_input = @bind max_order Scrubbable(0:20; default=0);
@@ -822,6 +824,9 @@ md"``n = `` $max_order_input"
 # ╔═╡ efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
 md"``n = `` $max_order_input"
 
+# ╔═╡ 9b96ba97-1fe6-4d08-aa69-07a04219686b
+max_order_reg_input = @bind max_order_reg Scrubbable(0:20; default=0);
+
 # ╔═╡ c6218e7c-1999-4e90-8868-a81717837fb2
 show_contour_input = @bind show_contour CheckBox(; default=false);
 
@@ -833,17 +838,17 @@ Let's overlay the computer-generated trajectory on our manual one.
 	Can you tell what strategy the computer is using to minimize the error?
 	What about if you show the contours of the error function?
 
-Show error: $show_contour_input
+Show contours of error function: $show_contour_input
 """
 
 # ╔═╡ 186680f8-9b47-4a93-9fa0-81c0c2ea894b
 λ_input = @bind λ Scrubbable(exp10.([-Inf; -15:1:0]); default=0, format=".1g");
 
 # ╔═╡ e2890775-2e29-4244-adac-c37f8f2a8a8e
-md"``n = `` $max_order_input ``\quad`` ``\lambda =`` $λ_input"
+md"``n = `` $max_order_reg_input ``\quad`` ``\lambda =`` $λ_input"
 
 # ╔═╡ fb5e7b56-66e5-45ef-9ad7-b50dd997137d
-thresh_input = @bind thresh Scrubbable(-4:0.1:4; default=0);
+thresh_input = @bind thresh Scrubbable(-3:0.1:3; default=0);
 
 # ╔═╡ 1e12834c-4b29-41db-ab1f-d93db62c8341
 md"``t = `` $thresh_input"
@@ -1196,7 +1201,7 @@ end
 
 # ╔═╡ 1a906880-75e1-447b-9adf-31ae44f0135f
 begin
-    f_hat_line(x) = w0 + w1 * x
+    f_hat_line(x) = w0_2 + w1 * x
     error_line = error(f_hat_line, x, y)
     equation_line = as_latex(f_hat_line)
 end;
@@ -1204,14 +1209,14 @@ end;
 # ╔═╡ 345ae96b-92c2-4ac4-bfdf-302113627ffb
 let
     p = plot_data(x, y; f_hat=f_hat_line, show_residuals=true, equation=equation_line)
-    plot!(p; title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))")
+    plot!(p; title=L"E(w)= %$(round(error_line; digits=2))")
 end
 
 # ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
 let
     scatter([w0], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
     plot!(;
-        title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))",
+        title=L"E(w)= %$(round(error_line; digits=2))",
         xlabel=L"w_0",
         ylabel=L"w_1",
     )
@@ -1341,7 +1346,7 @@ plot_poly_compare(x, y, ytest, max_order)
 plot_poly_compare(xmore, ymore, ymore_test, max_order)
 
 # ╔═╡ 9ce43ec1-78f5-414f-9796-ab3159be7985
-plot_poly_compare(x, y, ytest, max_order; λ)
+plot_poly_compare(x, y, ytest, max_order_reg; λ)
 
 # ╔═╡ 86e58e39-186e-470f-832a-32cd86717daa
 # for computational reasons, we use the QR parameterization of the regression model
@@ -3530,8 +3535,11 @@ version = "1.4.1+0"
 # ╟─c75744a0-3c3f-4042-a796-6cbd9ec11195
 # ╠═879e4355-d4f0-492c-9ac2-7359c794a9fd
 # ╠═b8ff692c-2ccb-455c-87c2-590177def1b4
+# ╠═fa6a31d1-f1b2-489b-9fef-4f92b5542c80
+# ╠═0103f249-52e2-4403-b62e-b3ad21536d37
 # ╠═e06d0925-585f-42e9-9dea-49044625d3d8
 # ╠═aa8c6266-0338-44a9-b14b-088f98b04db3
+# ╠═9b96ba97-1fe6-4d08-aa69-07a04219686b
 # ╠═c6218e7c-1999-4e90-8868-a81717837fb2
 # ╠═186680f8-9b47-4a93-9fa0-81c0c2ea894b
 # ╠═fb5e7b56-66e5-45ef-9ad7-b50dd997137d
