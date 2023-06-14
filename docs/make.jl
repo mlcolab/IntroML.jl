@@ -1,24 +1,30 @@
 using IntroML
 using Documenter
-using Pluto
+using PlutoSliderServer
 
 const DOCS_PATH = @__DIR__
 const SRC_PATH = joinpath(DOCS_PATH, "src")
 const NB_PATH = joinpath(dirname(DOCS_PATH), "notebooks")
 
-function build_notebook(nbpath, htmlpath)
+function build_notebook(nbpath, outpath)
+    htmlpath = joinpath(outpath, first(splitext(nbpath)) * ".html")
     @info "Building notebook at $nbpath to HTML file at $htmlpath"
-    s = Pluto.ServerSession()
-    nb = Pluto.SessionActions.open(s, nbpath; run_async=false)
-    write(htmlpath, Pluto.generate_html(nb))
+    PlutoSliderServer.export_notebook(
+        nbpath;
+        Export_output_dir=outpath,
+        Precompute_enabled=true,
+        Precompute_max_filesize_per_group=1e9,
+        Export_create_index=false,
+    )
+    isfile(htmlpath) ||
+        @warn "Failed to build notebook at $nbpath to HTML file at $htmlpath"
     return htmlpath
 end
 
 # build Pluto notebooks
 for fn in readdir(NB_PATH)
     nbpath = joinpath(NB_PATH, fn)
-    htmlpath = joinpath(SRC_PATH, first(splitext(fn)) * ".html")
-    build_notebook(nbpath, htmlpath)
+    build_notebook(nbpath, SRC_PATH)
 end
 
 DocMeta.setdocmeta!(IntroML, :DocTestSetup, :(using IntroML); recursive=true)
