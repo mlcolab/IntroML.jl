@@ -36,7 +36,7 @@ end
 md"""
 # Supervised learning: One step at a time
 
-This notebook was created for the ML ⇌ Science  Colaboratory's workshop [Introduction to Machine Learning](https://mlcolab.org/intro-ml).
+This notebook was created for the ML ⇌ Science  Colaboratory's workshop [Introduction to Machine Learning](https://mlcolab.org/resources/introml-july-2022-workshop-materials).
 
 We here focus on [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning).
 As we progress from a simple linear regression to a first example of a neural network, we introduce the basic concepts needed to understand machine learning.
@@ -732,16 +732,6 @@ So we can equivalently plot the combination of weights on a 2D grid with a reado
 ``w^\top = (`` $w0_input ``, `` $w1_input ``)``
 """
 
-# ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
-let
-    scatter([w0], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
-    plot!(;
-        title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))",
-        xlabel=L"w_0",
-        ylabel=L"w_1",
-    )
-end
-
 # ╔═╡ e06d0925-585f-42e9-9dea-49044625d3d8
 g_input = @bind g MultiSelect(
     [
@@ -1215,6 +1205,16 @@ end;
 let
     p = plot_data(x, y; f_hat=f_hat_line, show_residuals=true, equation=equation_line)
     plot!(p; title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))")
+end
+
+# ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
+let
+    scatter([w0], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
+    plot!(;
+        title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))",
+        xlabel=L"w_0",
+        ylabel=L"w_1",
+    )
 end
 
 # ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db

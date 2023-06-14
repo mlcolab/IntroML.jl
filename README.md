@@ -7,7 +7,7 @@
 [![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
  [![License: CC BY-SA 4.0](https://img.shields.io/badge/License-CC%20BY--SA%204.0-lightgrey.svg)](http://creativecommons.org/licenses/by-sa/4.0/)
  
-This repository contains notebooks for the [Introduction to Machine Learning workshop](https://mlcolab.org/intro-ml) with the [Machine Learning ⇌ Science Colaboratory](https://mlcolab.org).
+This repository contains notebooks for the [Introduction to Machine Learning workshop](https://mlcolab.org/resources/introml-july-2022-workshop-materials) with the [Machine Learning ⇌ Science Colaboratory](https://mlcolab.org).
 
 [![notebook_preview](https://user-images.githubusercontent.com/8673634/161941600-b1c31af3-df9b-4481-bb6f-1e25a4f849d2.gif)](https://mlcolab.github.io/IntroML.jl/dev/supervised_learning.html)
 
