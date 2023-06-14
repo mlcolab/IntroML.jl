@@ -732,6 +732,16 @@ So we can equivalently plot the combination of weights on a 2D grid with a reado
 ``w^\top = (`` $w0_input ``, `` $w1_input ``)``
 """
 
+# ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
+let
+    scatter([w0], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
+    plot!(;
+        title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))",
+        xlabel=L"w_0",
+        ylabel=L"w_1",
+    )
+end
+
 # ╔═╡ e06d0925-585f-42e9-9dea-49044625d3d8
 g_input = @bind g MultiSelect(
     [
@@ -1207,16 +1217,6 @@ let
     plot!(p; title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))")
 end
 
-# ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
-let
-    scatter([w0], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
-    plot!(;
-        title=L"E(w_0{=}%$(w0),w_1{=}%$(w1))= %$(round(error_line; digits=2))",
-        xlabel=L"w_0",
-        ylabel=L"w_1",
-    )
-end
-
 # ╔═╡ 6016a736-11da-4451-aa82-cc3045e782db
 let
     obj(w) = error(x -> w[1] + w[2] * x, x, y)
@@ -1464,7 +1464,7 @@ Turing = "~0.21.1"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.9.0"
+julia_version = "1.9.1"
 manifest_format = "2.0"
 project_hash = "addb13b0aea7688f4fe00d84034f44c777be88f4"
 
@@ -3393,7 +3393,7 @@ version = "0.15.1+0"
 [[deps.libblastrampoline_jll]]
 deps = ["Artifacts", "Libdl"]
 uuid = "8e850b90-86db-534c-a0d3-1478176c7d93"
-version = "5.7.0+0"
+version = "5.8.0+0"
 
 [[deps.libfdk_aac_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
