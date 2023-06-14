@@ -36,7 +36,7 @@ end
 md"""
 # Supervised learning: One step at a time
 
-This notebook was created for the ML ⇌ Science  Colaboratory's workshop [Introduction to Machine Learning](https://mlcolab.org/intro-ml). 
+This notebook was created for the ML ⇌ Science  Colaboratory's workshop [Introduction to Machine Learning](https://mlcolab.org/intro-ml).
 
 We here focus on [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning).
 As we progress from a simple linear regression to a first example of a neural network, we introduce the basic concepts needed to understand machine learning.
@@ -221,7 +221,7 @@ Let's look at this vocabulary of functions:
 
 # ╔═╡ d4c08329-baa4-438a-9555-ee0ea5443e44
 let
-	funs = vcat(one, reduce(vcat, [[x -> cospi(2j * x), x -> sinpi(2j * x)] for j in 1:4]))
+    funs = vcat(one, reduce(vcat, [[x -> cospi(2j * x), x -> sinpi(2j * x)] for j in 1:4]))
     plots = map(funs) do gj
         lex = latexify(gj(Symbolics.Sym{Real}(:x)); env=:raw)
         plot(gj, 0, 1; color=:orange, xlabel=L"x", ylabel=L"%$lex", label="")
@@ -338,7 +338,7 @@ html"""
 		border-color: #dba058;
 	    background: #f7d698;
 	}
-	
+
 	pluto-output div.admonition.model .admonition-title {
 		background: #dba058;
 	}
@@ -349,7 +349,7 @@ html"""
 		border-color: #d7ae61;
 	    background: #7d541f;
 	}
-	
+
 	pluto-output div.admonition.model .admonition-title {
 		background: #d7ae61;
 	}
@@ -379,10 +379,10 @@ In mathematical terminology, we seek to find a function ``y=\hat{f}(x)``.
 In ML we call this function a $(important("model")), and our goal in ML is to devise ways to learn models automatically from the data -- or $(important("learning algorithms")).
 Let's explore how to build ML algorithms together!
 
-!!! note 
+!!! note
     No plants were harmed to generate dataset ``\mathcal{D}``.
     Instead of measuring water amounts and plant heights, we generated ``10`` ``x_i`` values at regular intervals and used a function ``f`` (that we keep secret from you) to generate each ``y_i``:
-    ```math 
+    ```math
     y_i = f(x_i) + \mathrm{noise}.
     ```
     These "invented" outputs ``f(x_i)`` also received some noise to reflect measurement errors.
@@ -441,7 +441,7 @@ Conversely, we say that a model $(important("overfits")) the training data if it
 
 To check this for our models, we hold out a $(important("validation set")) ``(x_\mathrm{val}, y_\mathrm{val})``, data similar to ``(x, y)`` that we only use to validate our model.
 
-Often for validation, we use a different error function than for training. 
+Often for validation, we use a different error function than for training.
 Here, we use the $(important("root-mean-squared error")):
 ```math
 E_\mathrm{RMS}(w) = \sqrt{\frac{2E(w)}{n}}
@@ -492,7 +492,7 @@ For our linear regression model, with 2 degrees of freedom, we can visualize dra
 # ╔═╡ b0773555-44ac-4b06-a410-d25ee1f42399
 md"""
 Interestingly, our overparametrized model has quite a wide ensemble, since many possible curves are able to almost pass through our training data.
-Similarly, our underparametrized models likewise have a wider ensemble, as many linear fits have similar errors, while for ``n=3``, the ensemble is quite tight. 
+Similarly, our underparametrized models likewise have a wider ensemble, as many linear fits have similar errors, while for ``n=3``, the ensemble is quite tight.
 
 Bayesian models are very useful for certain problems and have distinct advantages and disadvantages.
 
@@ -584,7 +584,7 @@ While we could use the same sum-of-squares loss on this function, it turns out t
 E(w) = -\sum_{i=1}^k c_i \log \hat{f}(x_i; w) + (1 - c_i) \log (1 - \hat{f}(x_i; w))
 ````
 
-This model with this choice of loss is called [$(important("logistic regression"))](https://en.wikipedia.org/wiki/Logistic_regression). 
+This model with this choice of loss is called [$(important("logistic regression"))](https://en.wikipedia.org/wiki/Logistic_regression).
 
 Below we show the results of fitting an order ``n=33`` polynomial with logistic function output to the binary labels.
 """
@@ -648,30 +648,8 @@ md"""
 This section contains UI elements and variables they are bound to.
 """
 
-# ╔═╡ 2cc52188-b262-4f65-b042-ad94d90523d8
-begin
-    w0_input = @bind w0 Scrubbable(-3:0.1:3; default=0.3, format="0.2f")
-    w1_input = @bind w1 Scrubbable(-3:0.1:3; default=-3, format="0.2f")
-    g_input = @bind g MultiSelect(
-        [
-            one => "1",
-            identity => "x",
-            (x -> x^2) => "x²",
-            sin => "sin(x)",
-            cos => "cos(x)",
-            tan => "tan(x)",
-            exp => "exp(x)",
-        ];
-        size=5,
-        default=Function[one],
-    )
-    max_order_input = @bind max_order Scrubbable(0:20; default=0)
-    show_contour_input = @bind show_contour CheckBox(; default=false)
-    λ_input = @bind λ Scrubbable(exp10.([-Inf; -15:1:0]); default=0, format=".1g")
-    thresh_input = @bind thresh Scrubbable(-4:0.1:4; default=0)
-    nhidden1_input = @bind nhidden1 Scrubbable(0:10; default=0)
-    nhidden2_input = @bind nhidden2 Scrubbable(0:10; default=0)
-end;
+# ╔═╡ 879e4355-d4f0-492c-9ac2-7359c794a9fd
+w0_input = @bind w0 Scrubbable(-3:0.1:3; default=0.3, format="0.2f");
 
 # ╔═╡ cd49e0a5-4120-481a-965e-72e7bdaf867c
 md"""
@@ -717,6 +695,9 @@ Now drag the value of ``w_0`` until you've minimized the error shown at the top 
 ``w_0 = `` $w0_input
 """
 
+# ╔═╡ b8ff692c-2ccb-455c-87c2-590177def1b4
+w1_input = @bind w1 Scrubbable(-3:0.1:3; default=-3, format="0.2f");
+
 # ╔═╡ ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 md"""
 ### A line with slope
@@ -751,16 +732,20 @@ So we can equivalently plot the combination of weights on a 2D grid with a reado
 ``w^\top = (`` $w0_input ``, `` $w1_input ``)``
 """
 
-# ╔═╡ 2eb005a3-f5b2-4216-b56f-e25157b8c33c
-md"""
-Let's overlay the computer-generated trajectory on our manual one.
-
-!!! question
-	Can you tell what strategy the computer is using to minimize the error?
-	What about if you show the contours of the error function?
-
-Show error: $show_contour_input
-"""
+# ╔═╡ e06d0925-585f-42e9-9dea-49044625d3d8
+g_input = @bind g MultiSelect(
+    [
+        one => "1",
+        identity => "x",
+        (x -> x^2) => "x²",
+        sin => "sin(x)",
+        cos => "cos(x)",
+        tan => "tan(x)",
+        exp => "exp(x)",
+    ];
+    size=5,
+    default=Function[one],
+);
 
 # ╔═╡ 74290eff-781b-44c9-8a90-96bffbe040df
 md"""
@@ -803,6 +788,9 @@ let
     plot(plots...; link=:both)
 end
 
+# ╔═╡ aa8c6266-0338-44a9-b14b-088f98b04db3
+max_order_input = @bind max_order Scrubbable(0:20; default=0);
+
 # ╔═╡ ca1f0910-d417-41bc-ae2d-eebec7f3e1e9
 md"""
 ### Systematically scaling the model by adding terms
@@ -834,11 +822,34 @@ md"``n = `` $max_order_input"
 # ╔═╡ efb34c1a-5505-49f1-aa7f-24f6fd1fc01d
 md"``n = `` $max_order_input"
 
+# ╔═╡ c6218e7c-1999-4e90-8868-a81717837fb2
+show_contour_input = @bind show_contour CheckBox(; default=false);
+
+# ╔═╡ 2eb005a3-f5b2-4216-b56f-e25157b8c33c
+md"""
+Let's overlay the computer-generated trajectory on our manual one.
+
+!!! question
+	Can you tell what strategy the computer is using to minimize the error?
+	What about if you show the contours of the error function?
+
+Show error: $show_contour_input
+"""
+
+# ╔═╡ 186680f8-9b47-4a93-9fa0-81c0c2ea894b
+λ_input = @bind λ Scrubbable(exp10.([-Inf; -15:1:0]); default=0, format=".1g");
+
 # ╔═╡ e2890775-2e29-4244-adac-c37f8f2a8a8e
 md"``n = `` $max_order_input ``\quad`` ``\lambda =`` $λ_input"
 
+# ╔═╡ fb5e7b56-66e5-45ef-9ad7-b50dd997137d
+thresh_input = @bind thresh Scrubbable(-4:0.1:4; default=0);
+
 # ╔═╡ 1e12834c-4b29-41db-ab1f-d93db62c8341
 md"``t = `` $thresh_input"
+
+# ╔═╡ 94629920-3a9a-4d50-973f-cd18d3ea50f0
+nhidden1_input = @bind nhidden1 Scrubbable(0:10; default=0);
 
 # ╔═╡ d2e5bde1-8c65-494f-8944-b16dec6ab193
 md"""
@@ -851,6 +862,9 @@ Let's take the simple neural architecture with a single hidden layer displayed a
 
 Number of hidden units = $nhidden1_input
 """
+
+# ╔═╡ 38b63169-2712-48a6-b8b5-66429565cc87
+nhidden2_input = @bind nhidden2 Scrubbable(0:10; default=0);
 
 # ╔═╡ 29fb4486-5605-438f-9b1a-a24a19b20c5e
 md"""
@@ -3514,7 +3528,15 @@ version = "1.4.1+0"
 # ╠═54ef467e-8cc2-436e-bddc-37c57b6e6980
 # ╠═b176823e-b8b5-413d-87b1-90d7efa0e377
 # ╟─c75744a0-3c3f-4042-a796-6cbd9ec11195
-# ╠═2cc52188-b262-4f65-b042-ad94d90523d8
+# ╠═879e4355-d4f0-492c-9ac2-7359c794a9fd
+# ╠═b8ff692c-2ccb-455c-87c2-590177def1b4
+# ╠═e06d0925-585f-42e9-9dea-49044625d3d8
+# ╠═aa8c6266-0338-44a9-b14b-088f98b04db3
+# ╠═c6218e7c-1999-4e90-8868-a81717837fb2
+# ╠═186680f8-9b47-4a93-9fa0-81c0c2ea894b
+# ╠═fb5e7b56-66e5-45ef-9ad7-b50dd997137d
+# ╠═94629920-3a9a-4d50-973f-cd18d3ea50f0
+# ╠═38b63169-2712-48a6-b8b5-66429565cc87
 # ╟─d8983a9d-1880-4dc4-9c17-23281767e0c2
 # ╠═5e7bda42-0266-4498-906d-9aca8b6c4bf3
 # ╠═805d2824-86cc-45bd-88b0-e6e14d9fde48
