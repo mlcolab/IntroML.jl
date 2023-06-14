@@ -732,7 +732,7 @@ md"""
 Because we now have two weights, our parameter space is 2-dimensional.
 So we can equivalently plot the combination of weights on a 2D grid with a readout of the error and just move the values around until the error is minimized:
 
-``w^\top = (`` $w0_input ``, `` $w1_input ``)``
+``w^\top = (`` $w0_input2 ``, `` $w1_input ``)``
 """
 
 # ╔═╡ 0103f249-52e2-4403-b62e-b3ad21536d37
@@ -1214,7 +1214,7 @@ end
 
 # ╔═╡ 0d1164df-8236-494b-b8b9-71481c94c0d9
 let
-    scatter([w0], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
+    scatter([w0_2], [w1]; xlims=(-4.1, 4.1), ylims=(-3.1, 2.1), color=:orange, label="")
     plot!(;
         title=L"E(w)= %$(round(error_line; digits=2))",
         xlabel=L"w_0",
