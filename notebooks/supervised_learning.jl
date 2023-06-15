@@ -655,7 +655,7 @@ This section contains UI elements and variables they are bound to.
 """
 
 # ╔═╡ 879e4355-d4f0-492c-9ac2-7359c794a9fd
-w0_input = @bind w0 Scrubbable(-2:0.25:2; default=0.25, format="0.2f");
+w0_input = @bind w0 Scrubbable(-3:0.1:3; default=0.3, format="0.1f");
 
 # ╔═╡ cd49e0a5-4120-481a-965e-72e7bdaf867c
 md"""
@@ -702,10 +702,10 @@ Now drag the value of ``w_0`` until you've minimized the error shown at the top 
 """
 
 # ╔═╡ b8ff692c-2ccb-455c-87c2-590177def1b4
-w0_input2 = @bind w0_2 Scrubbable(-2:0.25:2; default=0.25, format="0.2f");
+w0_input2 = @bind w0_2 Scrubbable(-2:0.1:2; default=0.3, format="0.1f");
 
 # ╔═╡ fa6a31d1-f1b2-489b-9fef-4f92b5542c80
-w1_input = @bind w1 Scrubbable(-1:0.25:3; default=-1, format="0.2f");
+w1_input = @bind w1 Scrubbable(-1:0.1:3; default=-1, format="0.1f");
 
 # ╔═╡ ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 md"""
