@@ -50,9 +50,8 @@ As we progress from a simple linear regression to a first example of a neural ne
 
 !!! note
 	This notebook is written using [Pluto](https://github.com/fonsp/Pluto.jl), a reactive notebook environment.
-    If you're viewing this on the web, the interactive elements will be static, and this will not be as useful.
-    Click "Edit or run this notebook" on the top right to find instructions for making it interactive.
-    Note that because we load several heavy dependencies, Binder will likely not work.
+    If you're viewing this on the web and the interactive elements don't work for you, click "Edit or run this notebook" on the top right to find instructions for making it fully interactive.
+    Note that because we load several heavy dependencies, the Binder option will likely not work.
 """
 
 # ╔═╡ 31b1a0e4-216f-4c90-b16e-f542000c8aee
