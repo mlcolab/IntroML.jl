@@ -702,10 +702,10 @@ Now drag the value of ``w_0`` until you've minimized the error shown at the top 
 """
 
 # ╔═╡ b8ff692c-2ccb-455c-87c2-590177def1b4
-w0_input2 = @bind w0_2 Scrubbable(vcat(-2, -2:0.1:2, 2); default=0.3, format="0.1f");
+w0_input2 = @bind w0_2 Scrubbable(-2:0.1:2; default=0.3, format="0.1f");
 
 # ╔═╡ fa6a31d1-f1b2-489b-9fef-4f92b5542c80
-w1_input = @bind w1 Scrubbable(vcat(-1, -1:0.1:3, 3); default=-1.1, format="0.1f");
+w1_input = @bind w1 Scrubbable(-1:0.1:3; default=-1, format="0.1f");
 
 # ╔═╡ ae5d8669-f4c4-4b55-9af9-8488e43bcb6c
 md"""
@@ -848,7 +848,7 @@ Show contours of error function: $show_contour_input
 """
 
 # ╔═╡ 186680f8-9b47-4a93-9fa0-81c0c2ea894b
-λ_input = @bind λ Scrubbable(exp10.([-Inf; -Inf; -15:1:0]); default=0, format=".1g");
+λ_input = @bind λ Scrubbable(exp10.([-Inf; -15:1:0]); default=0, format=".1g");
 
 # ╔═╡ e2890775-2e29-4244-adac-c37f8f2a8a8e
 md"``n = `` $max_order_reg_input ``\quad`` ``\lambda =`` $λ_input"
@@ -1272,8 +1272,8 @@ let
     )
     plot!(
         p;
-        xlims=(-2.1, 2.1),
-        ylims=(-1.1, 3.1),
+        xlims=(-2.1, 4.1),
+        ylims=(-3.1, 2.1),
         aspect_ratio=1,
         xlabel=L"w_0",
         ylabel=L"w_1",
@@ -1416,8 +1416,8 @@ let
     scatter!(p, [f_hat.w[1]], [f_hat.w[2]]; color=:orange, msc=:white, msw=1.3, ms=3)
     plot!(
         p;
-        xlims=(-2.1, 2.1),
-        ylims=(-1.1, 3.1),
+        xlims=(-4.1, 4.1),
+        ylims=(-3.1, 2.1),
         aspect_ratio=1,
         xlabel=L"w_0",
         ylabel=L"w_1",
