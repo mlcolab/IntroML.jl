@@ -3,4 +3,8 @@
 *.jl.mem
 /Manifest.toml
 /docs/build/
+
+# PlutoSliderServer outputs
 /docs/src/*.html
+/docs/src/staterequest
+/docs/src/bondconnections
