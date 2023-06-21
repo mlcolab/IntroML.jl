@@ -2716,7 +2716,9 @@ version = "1.27.6"
 
 [[deps.PlutoUI]]
 deps = ["AbstractPlutoDingetjes", "Base64", "ColorTypes", "Dates", "FixedPointNumbers", "Hyperscript", "HypertextLiteral", "IOCapture", "InteractiveUtils", "JSON", "Logging", "MIMEs", "Markdown", "Random", "Reexport", "URIs", "UUIDs"]
-git-tree-sha1 = "b478a748be27bd2f2c73a7690da219d0844db305"
+git-tree-sha1 = "436c0db5ba99a01452f52a0ab0fd8ad6664d5470"
+repo-rev = "ms_nonlazy"
+repo-url = "https://github.com/sethaxen/PlutoUI.jl"
 uuid = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
 version = "0.7.51"
 
