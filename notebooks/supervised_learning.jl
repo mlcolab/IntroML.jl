@@ -320,7 +320,7 @@ md"""
 
 To recap, we explored approaches for adding and evaluating model complexity, which led us first to linear regression, then polynomial regression, then logistic regression, and finally to simple neural networks.
 
-Now that you've built some intuition and familarity with the concepts, we recommend trying out [TensorFlow Playground](https://playground.tensorflow.org/#activation=sigmoid&batchSize=10&dataset=xor&regDataset=reg-plane&learningRate=0.03&regularizationRate=0.001&noise=0&networkShape=5&seed=0.54504&showTestData=false&discretize=false&percTrainData=50&x=true&y=true&xTimesY=false&xSquared=false&ySquared=false&cosX=false&sinX=false&cosY=false&sinY=false&collectStats=false&problem=classification&initZero=false&hideText=false)!
+Now that you've built some intuition and familiarity with the concepts, we recommend trying out [TensorFlow Playground](https://playground.tensorflow.org/#activation=sigmoid&batchSize=10&dataset=xor&regDataset=reg-plane&learningRate=0.03&regularizationRate=0.001&noise=0&networkShape=5&seed=0.54504&showTestData=false&discretize=false&percTrainData=50&x=true&y=true&xTimesY=false&xSquared=false&ySquared=false&cosX=false&sinX=false&cosY=false&sinY=false&collectStats=false&problem=classification&initZero=false&hideText=false)!
 """
 
 # ╔═╡ 5b237453-472f-414e-95e0-f44e980ea93a
