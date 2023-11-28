@@ -43,7 +43,7 @@ end
 md"""
 # Supervised learning: One step at a time
 
-This notebook was created for the ML ⇌ Science  Colaboratory's workshop [Introduction to Machine Learning](https://mlcolab.org/resources/introml-july-2022-workshop-materials).
+This notebook was created for the ML ⇌ Science  Colaboratory's workshop [Introduction to Machine Learning](https://mlcolab.org/resources/introml-november-2023-workshop-materials).
 
 We here focus on [supervised learning](https://en.wikipedia.org/wiki/Supervised_learning).
 As we progress from a simple linear regression to a first example of a neural network, we introduce the basic concepts needed to understand machine learning.
