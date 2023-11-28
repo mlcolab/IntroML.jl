@@ -1,4 +1,3 @@
-using IntroML
 using Documenter
 using PlutoSliderServer
 
